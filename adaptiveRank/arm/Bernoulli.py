@@ -21,6 +21,6 @@ class Bernoulli(Arm):
 
     def draw(self, current_delay):
         draw = bernoulli.rvs(mean, size = 1)
-        if current_delay <= maxdelay:
+        if current_delay != 0 and current_delay <= maxdelay:
             draw *= (1 - self._gamma**current_delay)
         return draw
