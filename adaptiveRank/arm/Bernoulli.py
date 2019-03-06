@@ -16,6 +16,9 @@ class Bernoulli(Arm):
         self._gamma = gamma
         self._maxdelay = maxdelay
 
+    def __str__(self):
+        return "Bernoulli arm. mu: {} gamma: {} max_delay: {}".format(self._mean, self._gamma, self._maxdelay)
+
     def draw(self, current_delay):
         draw = bernoulli.rvs(mean, size = 1)
         if current_delay <= maxdelay:
