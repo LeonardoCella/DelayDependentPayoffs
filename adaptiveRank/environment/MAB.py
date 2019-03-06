@@ -29,6 +29,8 @@ class MAB(Environment):
             tmp_arm = Bernoulli(mu, self.gamma, self.max_delay)
             arms.append(tmp_arm)
             c_print(2, "MAB: Created arm: {}".format(tmp_arm))
+        c_print(1, "List of {} Bernoulli arms".format(len(arms)))
+
 
     def play(self, policy, horizon, nbRepetition):
         ''' Called once per policy from __init__ of Evaluation. Is the one that manages the rounds.'''
