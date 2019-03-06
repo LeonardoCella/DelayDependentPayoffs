@@ -8,12 +8,12 @@ from adaptiveRank.tools.io import c_print
 from joblib import Parallel, delayed
 
 def parallel_repetitions(evaluation, policy, horizon, i):
-    controlled_print(4, "\nEVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
+    c_print(4, "\nEVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
     result = evaluation.environment.play(policy, horizon, i)
     return (i,result)
 
 class Evaluation:
-    def __init__(self, env, pol, reductionDim, nbRepetitions, index, n_job_ite):
+    def __init__(self, env, pol, nbRepetitions, index, n_job_ite):
         ''' Initialized in the run.py file.'''
         self.environment = env
         self.policy = pol
@@ -26,14 +26,9 @@ class Evaluation:
 
         self.rewards = np.zeros(self.nbRepetitions)
         self.cumSumRwd = np.zeros((self.nbRepetitions, self.horizon))
-        self.regrets = np.zeros(self.nbRepetitions)
-        self.arr_bestExpectation = np.zeros(self.nbRepetitions)
-        self.compressed_rounds = np.zeros(self.horizon)
 
-        self.reductionDim = env.sd
-        self.dimension = env.d
-        controlled_print(4,"===EVALUATION INIT: horizon {}, nbArms {}, nbRepetitions {}, redDim {}, dim {}".format(self.horizon, self.nbArms, self.nbRepetitions, self.reductionDim, self.dimension))
-        
+        c_print(4,"===EVALUATION INIT: horizon {}, nbArms {}, nbRepetitions {}".format(self.horizon, self.nbArms, self.nbRepetitions))
+
         # Parallel call to the policy run over the number of repetitions. I got the final results. TO BE TESTED!!!
         with Parallel(n_jobs = n_job_ite) as parallel:
             repetitionIndex_results = parallel(delayed(parallel_repetitions)(self, pol, self.horizon, i) for i in range(nbRepetitions))
@@ -42,17 +37,11 @@ class Evaluation:
             self.nbPulls[i,:] = result.getNbPulls()
             self.rewards[i] = result.getReward() # Over the flattened array
             self.cumSumRwd[i] = result.getCumSumRwd()
-            self.regrets[i] = result.getRegret()
-            controlled_print(1, "EVALUATION_INDEX {} ITERATION {}/{}  best_Expectation {} - rewards {}".format(self.index, i+1, nbRepetitions, result._bestExpectation, self.rewards[i]))
-            controlled_print(1, "EVALUATION_INDEX {} ITERATION {}/{} regret: {}".format(self.index, i+1, nbRepetitions, self.regrets[i]))
-            self.arr_bestExpectation[i] = result._bestExpectation
-            self.wrong_rounds = result.getWrongRounds()
+            c_print(1, "EVALUATION_INDEX {} ITERATION {}/{}  best_Expectation {} - rewards {}".format(self.index, i+1, nbRepetitions, result._bestExpectation, self.rewards[i]))
+            c_print(1, "EVALUATION_INDEX {} ITERATION {}/{} regret: {}".format(self.index, i+1, nbRepetitions, self.regrets[i]))
 
-            # I get the compressed round (only for the sketched case)
-            if index != 0 and index != 1:
-                self.compressed_rounds = pol.endGame()
-        
-        controlled_print(4, "End iteration over repetitions")
+        c_print(4, "End iteration over repetitions")
+
         # Averaged best Expectation.
         self.meanBestExpectation = np.mean(self.arr_bestExpectation)
         self.meanRegret = np.mean(self.regrets)

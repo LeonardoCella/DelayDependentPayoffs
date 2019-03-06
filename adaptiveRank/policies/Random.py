@@ -6,7 +6,7 @@ __version__ = "0.1"
 import numpy as np
 import random
 
-from adaptiveRank.polcies.Policy import Policy
+from adaptiveRank.policies.Policy import Policy
 from adaptiveRank.tools.io import c_print
 
 class Random(Policy):
@@ -14,4 +14,5 @@ class Random(Policy):
         pass
 
     def choice(self, arms):
-        return arms.index(random.choice(arms))
+        c_print(2, "Random Arms: {}".format(arms))
+        return random.choice(range(len(arms)))

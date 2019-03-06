@@ -5,7 +5,7 @@ __version__ = "0.1"
 
 import numpy as np
 
-from adaptiveRank.polcies.Policy import Policy
+from adaptiveRank.policies.Policy import Policy
 from adaptiveRank.tools.io import c_print
 
 class Greedy(Policy):
@@ -13,4 +13,4 @@ class Greedy(Policy):
         pass
 
     def choice(self, arms):
-        return arms.index(max(arms))
+        return arms.argmax()

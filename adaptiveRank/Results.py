@@ -7,9 +7,8 @@ from adaptiveRank.tools.io import c_print
 class Result:
     """Class that analyzes the outcome of a bandit experiment"""
 
-    def __init__(self, nbArms, horizon):
+    def __init__(self, horizon):
         # Initially all the rounds have no choices or rewards.
-        self.nbArms = nbArms
         self.choices = np.zeros(horizon, dtype=np.int)
         self.rewards = np.zeros(horizon)
 
@@ -19,15 +18,6 @@ class Result:
         self.rewards[t] = reward
 
     def getNbPulls(self):
-        # Returns a np.array of nbArms elements. Each one is a counter of the number of selections of the respective arm
-        if (self.nbArms == float('inf')):
-            self.nbPulls = np.array([])
-            pass
-        else:
-            nbPulls = np.zeros(self.nbArms)
-            for choice in self.choices:
-                nbPulls[choice] += 1
-            return nbPulls
 
     def getCumSumRwd(self):
         return np.cumsum(self.rewards)

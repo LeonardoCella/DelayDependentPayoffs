@@ -3,8 +3,11 @@ __author__ = "Leonardo Cella"
 __version__ = "0.1"
 
 class Arm:
-    def __init__(self):
+    def __init__(self, mean, gamma, maxDelay):
         pass
 
-    def draw(mean, gamma, max_delaxy):
+    def draw(self, currentDelay):
+        pass
+
+    def computeState(self, currentDelay):
         pass
