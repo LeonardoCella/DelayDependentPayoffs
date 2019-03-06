@@ -2,5 +2,5 @@ class Policy:
     def __init__(self):
         pass
     
-    def choose(self, arms):
+    def choice(self, arms):
         pass
