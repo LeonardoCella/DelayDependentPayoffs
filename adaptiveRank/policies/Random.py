@@ -14,5 +14,4 @@ class Random(Policy):
         pass
 
     def choice(self, arms):
-        c_print(2, "Random Arms: {}".format(arms))
         return random.choice(range(len(arms)))

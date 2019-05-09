@@ -17,9 +17,6 @@ class Result:
         self.choices[t] = choice
         self.rewards[t] = reward
 
-    def getNbPulls(self):
-        return
-
     def getCumSumRwd(self):
         return np.cumsum(self.rewards)
 

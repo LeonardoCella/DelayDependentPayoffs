@@ -6,6 +6,7 @@ from adaptiveRank.arm import Bernoulli
 from adaptiveRank.Evaluation import Evaluation
 from adaptiveRank.environment import MAB
 from adaptiveRank.policies.Random import Random
+from adaptiveRank.policies.Ghost import Ghost
 from adaptiveRank.policies.Greedy import Greedy
 
 from optparse import OptionParser
@@ -31,18 +32,22 @@ N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.NREP
 N_POLICY_THREAD = 1
 assert N_BUCKETS >= MAX_DELAY, "The number of arms cannot be lower than the max delay"
-c_print(2, "run horizon: {}, number of buckets: {}, max delay: {}, gamma {}".format(HORIZON, N_BUCKETS, MAX_DELAY, GAMMA))
+c_print(2, "Run.py, Parameters: horizon: {}, number of buckets: {}, max delay: {}, gamma {}".format(HORIZON, N_BUCKETS, MAX_DELAY, GAMMA))
 
 #=====================
 # INITIALIZATION 
-#====================
-mab = MAB(HORIZON, N_BUCKETS, N_REPETITIONS, GAMMA, MAX_DELAY)
-policies = [Random(), Greedy(), Greedy()]
+#=====================
+policies = [Random(), Greedy(), Ghost()]
 policies_name = ['Random', 'Greedy', 'Ghost']
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
 N_POLICIES = len(policies_name)
 cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON)) 
-exit()
+
+#=====================
+# RUN OVER POLICIES
+#=====================
 for i,p in enumerate(policies):
-    c_print(2, "Run {}/{}. Policy: {}".format(i,len(policies_name), policies_name[i]))
-    evaluation = Evaluation(mab, p, HORIZON, N_REPETITIONS, N_POLICY_THREAD)
+    mab = MAB(HORIZON, N_BUCKETS, GAMMA, MAX_DELAY)
+    c_print(5, "======================================")
+    c_print(2, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
+    evaluation = Evaluation(mab, p, HORIZON, policies[i], N_REPETITIONS)
