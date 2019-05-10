@@ -39,6 +39,7 @@ class MAB(Environment):
         else:
             means = full_grid
         means = 1 - unique(means)
+        c_print(4, "\n=========MAB_INIT=========")
         c_print(2, "MAB.py, Arm means: {}".format(means))
         for mu in means:
             tmpArm = Bernoulli(mu, self.gamma, self.maxDelay)
@@ -51,12 +52,12 @@ class MAB(Environment):
         assert len(self._armsDelay) == len(self._armsStates), "MAB compute_states: Incoherent size"
         for i, arm, delay in zip(arange(0, self.nbBuckets, 1), self.arms, self._armsDelay):
             self._armsStates[i] = arm.computeState(delay)
-        c_print(2, "\nMAB.py, compute_state() Round {}, Arms states: {}".format(round, self._armsStates))
+        c_print(1, "\nMAB.py, compute_state() Round {}, Arms states: {}".format(round, self._armsStates))
         return
 
     def play(self, policy, horizon, nbRepetition):
         ''' Called once per policy from __init__ of Evaluation. Rounds scheduler.'''
-        c_print(2, "MAB.py, play()")
+        c_print(1, "MAB.py, play()")
 
         result = Result(horizon)
         for t in range(horizon):
@@ -67,7 +68,7 @@ class MAB(Environment):
             reward = self.arms[choice].draw(self._armsDelay[choice])
             result.store(t, choice, reward)
 
-            c_print(4, "Chosen arm: {}".format(choice))
+            c_print(2, "Chosen arm: {} at round: {}".format(choice, t))
             # Delays update
             for i in self._armsIndexes:
                 d = self._armsDelay[i]

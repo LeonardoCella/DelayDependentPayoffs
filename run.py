@@ -32,7 +32,8 @@ N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.NREP
 N_POLICY_THREAD = 1
 assert N_BUCKETS >= MAX_DELAY, "The number of arms cannot be lower than the max delay"
-c_print(2, "Run.py, Parameters: horizon: {}, number of buckets: {}, max delay: {}, gamma {}".format(HORIZON, N_BUCKETS, MAX_DELAY, GAMMA))
+c_print(3, "\n")
+c_print(2, "Run.py, Parameters: horizon: {}, number of buckets: {}, max delay: {}, gamma {}\n".format(HORIZON, N_BUCKETS, MAX_DELAY, GAMMA))
 
 #=====================
 # INITIALIZATION 
@@ -48,6 +49,6 @@ cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))
 #=====================
 for i,p in enumerate(policies):
     mab = MAB(HORIZON, N_BUCKETS, GAMMA, MAX_DELAY)
-    c_print(5, "======================================")
-    c_print(2, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
-    evaluation = Evaluation(mab, p, HORIZON, policies[i], N_REPETITIONS)
+    c_print(5, "=========RUN_POLICIES=========")
+    c_print(5, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
+    evaluation = Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS)

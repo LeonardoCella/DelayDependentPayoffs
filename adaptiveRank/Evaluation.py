@@ -8,13 +8,14 @@ from adaptiveRank.tools.io import c_print
 from joblib import Parallel, delayed
 
 def parallel_repetitions(evaluation, policy, horizon, i):
-    c_print(4, "\nEVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
+    c_print(4, "EVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
     result = evaluation.environment.play(policy, horizon, i)
     return (i,result)
 
 class Evaluation:
     def __init__(self, env, pol, horizon, policyName, nbRepetitions ):
         ''' Initialized in the run.py file.'''
+
         # Associated learning problem: policy, environment
         self.environment = env
         self.policy = pol
@@ -39,11 +40,18 @@ class Evaluation:
             self.rewards[i] = result.getReward() # Over the flattened array
             self.cumSumRwd[i] = result.getCumSumRwd()
 
-        c_print(2, "End iteration over repetitions")
+        c_print(2, "EVALUATION: End iteration over {} repetitions for {}".format(nbRepetitions, policyName))
 
-        # Averaged best Expectation.
+        # Averaged best Expectation
         self.meanReward = np.mean(self.rewards)
-        self.meanCumSumRwd = np.mean(self.cumSumRwd)
+        self.meanCumSumRwd = np.mean(self.cumSumRwd, axis = 0)
+        self.stdCumSumRwd = np.std(self.cumSumRwd, axis = 0)
+
+        # Results visualization
+        c_print(4, "Evaluation.py, Pol: {}, Rewards: {} Average: {}".format(policyName, self.rewards, self.meanReward))
+        c_print(2, "Evaluation.py, Pol: {}, Cumulative Rewards:\n{}".format(policyName, self.cumSumRwd))
+        c_print(2, "Evaluation.py, Pol: {}, Mean CumulativeReward:\n{}".format(policyName, self.meanCumSumRwd))
+        c_print(2, "Evaluation.py, Pol: {}, Std CumulativeReward:\n{}".format(policyName, self.stdCumSumRwd))
 
     def cumSumRwds(self):
         return self.cumSumRwd
