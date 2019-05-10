@@ -4,3 +4,6 @@ class Policy:
     
     def choice(self, arms):
         pass
+
+    def update(self, choice, rwd):
+        pass

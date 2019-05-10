@@ -26,7 +26,8 @@ class Bernoulli(Arm):
         if currentDelay != 0 and currentDelay <= self._maxDelay:
             c_print(1, "Discounting")
             expectedReward *= (1 - self._gamma**currentDelay)
-        return bernoulli.rvs(expectedReward)
+        return expectedReward
+        #return bernoulli.rvs(expectedReward)
 
     def computeState(self, currentDelay):
         expectedReward = self._mean

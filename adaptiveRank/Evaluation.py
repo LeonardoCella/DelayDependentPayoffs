@@ -8,7 +8,7 @@ from adaptiveRank.tools.io import c_print
 from joblib import Parallel, delayed
 
 def parallel_repetitions(evaluation, policy, horizon, i):
-    c_print(4, "EVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
+    c_print(2, "EVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
     result = evaluation.environment.play(policy, horizon, i)
     return (i,result)
 
@@ -53,14 +53,7 @@ class Evaluation:
         c_print(2, "Evaluation.py, Pol: {}, Mean CumulativeReward:\n{}".format(policyName, self.meanCumSumRwd))
         c_print(2, "Evaluation.py, Pol: {}, Std CumulativeReward:\n{}".format(policyName, self.stdCumSumRwd))
 
-    def cumSumRwds(self):
-        return self.cumSumRwd
+        self.result = (policyName, self.meanCumSumRwd, self.stdCumSumRwd)
 
-    def getRewards(self):
-        return self.rewards
-
-    def getMeanReward(self):
-        return self.meanReward
-
-    def getMeanCumSumRwd(self):
-        return self.meanCumSumRwd
+    def getResults(self):
+        return self.result 

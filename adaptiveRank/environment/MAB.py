@@ -14,10 +14,11 @@ import sortednp as snp
 class MAB(Environment):
     """Multi-armed bandit problem with arms given in the 'arms' list"""
 
-    def __init__(self, horizon, nbBuckets, gamma, maxDelay):
+    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay):
         self.horizon = horizon
         self.nbBuckets = nbBuckets
         self.gamma = gamma
+        self.fraTop = fraTop
         self.maxDelay = maxDelay
         self.arms = []
         self.nbArms = self._arm_creation()
@@ -28,19 +29,16 @@ class MAB(Environment):
         self._armsStates = zeros(self.nbArms)
 
     def _arm_creation(self):
-        full_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
-        c_print(1, "Buckets: {}".format(full_grid))
-        if self.maxDelay < self.nbBuckets:
-            delta = 1.0/(self.nbBuckets) # Previously adopted delta
-            new_extreme = delta*self.maxDelay
-            good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
-            c_print(1, "Good arms: {}".format(good_arms))
-            means = around(array(snp.merge(full_grid, good_arms)), 2) # evenly round to 2 decimals 
-        else:
-            means = full_grid
+        starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
+        c_print(1, "Buckets: {}".format(starting_grid))
+        delta = 1.0/(self.nbBuckets) # Previously adopted delta
+        new_extreme = delta*self.fraTop*self.nbBuckets
+        good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
+        c_print(1, "Good arms: {}".format(good_arms))
+        means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
         means = 1 - unique(means)
         c_print(4, "\n=========MAB_INIT=========")
-        c_print(2, "MAB.py, Arm means: {}".format(means))
+        c_print(3, "MAB.py, Arm means: {}".format(means))
         for mu in means:
             tmpArm = Bernoulli(mu, self.gamma, self.maxDelay)
             self.arms.append(tmpArm)
@@ -66,6 +64,7 @@ class MAB(Environment):
             # Choice and Feedback 
             choice = policy.choice(self._armsStates)
             reward = self.arms[choice].draw(self._armsDelay[choice])
+            policy.update(choice, reward)
             result.store(t, choice, reward)
 
             c_print(2, "Chosen arm: {} at round: {}".format(choice, t))
