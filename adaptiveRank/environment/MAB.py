@@ -58,24 +58,32 @@ class MAB(Environment):
         c_print(1, "MAB.py, play()")
 
         result = Result(horizon)
-        for t in range(horizon):
+        t = 0
+        while t < horizon:
             self.compute_states(t)
 
-            # Choice and Feedback 
+            # Structured Choice and Feedback 
             choice = policy.choice(self._armsStates)
-            reward = self.arms[choice].draw(self._armsDelay[choice])
-            policy.update(choice, reward)
-            result.store(t, choice, reward)
+            for c in choice:
+                reward = self.arms[c].draw(self._armsDelay[c])
+                policy.update(c, reward)
+                result.store(t, c, reward)
 
-            c_print(2, "Chosen arm: {} at round: {}".format(choice, t))
-            # Delays update
-            for i in self._armsIndexes:
-                d = self._armsDelay[i]
-                if d != 0 and i != choice:
-                    self._armsDelay[i] += 1
-                if d > self.maxDelay:
-                    self._armsDelay[i] = 0
-                if i == choice:
-                    self._armsDelay[i] = 1
+                c_print(4, "Chosen arm: {} at round: {}".format(c, t))
+                # Delays update
+                for i in self._armsIndexes:
+                    d = self._armsDelay[i]
+                    if d != 0 and i != c:
+                        self._armsDelay[i] += 1
+                    if d > self.maxDelay:
+                        self._armsDelay[i] = 0
+                    if i == c:
+                        self._armsDelay[i] = 1
+                t = t + 1
+
+                # Additional termination condition due to finite horizon
+                if t == horizon:
+                    return result
+
 
         return result

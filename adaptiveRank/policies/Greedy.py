@@ -9,8 +9,8 @@ from adaptiveRank.policies.Policy import Policy
 from adaptiveRank.tools.io import c_print
 
 class Greedy(Policy):
-    def __init__(self):
+    def __init__(self, MOD=1):
         pass
 
     def choice(self, arms):
-        return arms.argmax()
+        return [arms.argmax()]

@@ -13,8 +13,9 @@ from adaptiveRank.tools.io import c_print
 class UCB(Policy):
     '''UCB1 Policy'''
 
-    def __init__(self):
+    def __init__(self, MOD):
         self.t = 0
+        self.MOD = MOD
 
     def choice(self, arms):
         # New round
@@ -22,7 +23,7 @@ class UCB(Policy):
 
         if self.t > 1:
             not_pulled_idx = where(self._nbPulls==0)
-            c_print(2, "Round {} Not pulled Indexes: {}".format(self.t, not_pulled_idx[0]))
+            c_print(self.MOD, "Round {} Not pulled Indexes: {}".format(self.t, not_pulled_idx[0]))
             if len(not_pulled_idx[0]) > 0:
                 index = choice(not_pulled_idx[0])
             else:
@@ -30,17 +31,17 @@ class UCB(Policy):
                 for i in range(len(arms)):
                     ucb_values[i] = (self._cumRwds[i]/self._nbPulls[i]) + sqrt((2*log(self.t))/self._nbPulls[i])
                 index = argmax(ucb_values)
-                c_print(2, "Round {} UCB {}".format(self.t, ucb_values))
+                c_print(self.MOD, "Round {} UCB {}".format(self.t, ucb_values))
         else: #First run only
             self._cumRwds = zeros(len(arms))
             self._nbPulls = zeros(len(arms))
             index = choice(range(len(arms)))
 
-        c_print(2, "Round {} CumRwds {} NbPulls {}".format(self.t, self._cumRwds, self._nbPulls))
-        c_print(2, "Index: {}\n".format(index))
+        c_print(self.MOD, "Round {} CumRwds {} NbPulls {}".format(self.t, self._cumRwds, self._nbPulls))
+        c_print(self.MOD, "Index: {}\n".format(index))
 
         self._nbPulls[index] = self._nbPulls[index] + 1
-        return index
+        return [index]
 
     def update(self, arm, rwd):
         self._cumRwds[arm] = self._cumRwds[arm] + rwd

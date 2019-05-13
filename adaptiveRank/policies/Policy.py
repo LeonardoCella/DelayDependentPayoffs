@@ -1,5 +1,5 @@
 class Policy:
-    def __init__(self):
+    def __init__(self, MOD):
         pass
     
     def choice(self, arms):
