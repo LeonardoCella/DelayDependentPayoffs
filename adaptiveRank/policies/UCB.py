@@ -43,5 +43,5 @@ class UCB(Policy):
         self._nbPulls[index] = self._nbPulls[index] + 1
         return [index]
 
-    def update(self, arm, rwd):
+    def update(self, arm, rwd, delay):
         self._cumRwds[arm] = self._cumRwds[arm] + rwd

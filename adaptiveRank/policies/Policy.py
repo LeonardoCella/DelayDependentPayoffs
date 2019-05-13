@@ -5,5 +5,5 @@ class Policy:
     def choice(self, arms):
         pass
 
-    def update(self, choice, rwd):
+    def update(self, choice, rwd, delay):
         pass

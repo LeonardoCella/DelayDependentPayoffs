@@ -65,11 +65,11 @@ class MAB(Environment):
             # Structured Choice and Feedback 
             choice = policy.choice(self._armsStates)
             for c in choice:
+                c_print(4, "Chosen arm: {} at round: {}".format(c, t))
                 reward = self.arms[c].draw(self._armsDelay[c])
-                policy.update(c, reward)
+                policy.update(c, reward, self._armsDelay[c])
                 result.store(t, c, reward)
 
-                c_print(4, "Chosen arm: {} at round: {}".format(c, t))
                 # Delays update
                 for i in self._armsIndexes:
                     d = self._armsDelay[i]
