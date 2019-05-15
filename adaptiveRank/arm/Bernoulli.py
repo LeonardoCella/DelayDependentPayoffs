@@ -13,10 +13,11 @@ TEST = True
 class Bernoulli(Arm):
     """Bernoulli distributed arm"""
 
-    def __init__(self, mean, gamma, maxDelay):
+    def __init__(self, mean, gamma, maxDelay, approximate):
         self._mean = mean
         self._gamma = gamma
         self._maxDelay = maxDelay
+        self._approximate = approximate
 
     def __str__(self):
         return "Bernoulli arm. mu: {} gamma: {} max_delay: {}".format(self._mean, self._gamma, self._maxDelay)
@@ -26,8 +27,10 @@ class Bernoulli(Arm):
         if currentDelay != 0 and currentDelay <= self._maxDelay:
             c_print(1, "Discounting")
             expectedReward *= (1 - self._gamma**currentDelay)
-        return expectedReward
-        #return bernoulli.rvs(expectedReward)
+        if self._approximate == 0:
+            return expectedReward
+        else:
+            return bernoulli.rvs(expectedReward)
 
     def computeState(self, currentDelay):
         expectedReward = self._mean

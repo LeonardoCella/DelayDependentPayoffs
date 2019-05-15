@@ -14,12 +14,13 @@ import sortednp as snp
 class MAB(Environment):
     """Multi-armed bandit problem with arms given in the 'arms' list"""
 
-    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay):
+    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate):
         self.horizon = horizon
         self.nbBuckets = nbBuckets
         self.gamma = gamma
         self.fraTop = fraTop
         self.maxDelay = maxDelay
+        self._approximate = approximate
         self.arms = []
 
         # Arm Creation
@@ -42,7 +43,7 @@ class MAB(Environment):
         c_print(4, "\n=========MAB_INIT=========")
         c_print(4, "MAB.py, Arm means: {}".format(means))
         for mu in means:
-            tmpArm = Bernoulli(mu, self.gamma, self.maxDelay)
+            tmpArm = Bernoulli(mu, self.gamma, self.maxDelay, self._approximate)
             self.arms.append(tmpArm)
             c_print(1, "MAB INIT: Created arm: {}".format(tmpArm))
         return len(means)

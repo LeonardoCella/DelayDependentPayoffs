@@ -31,6 +31,7 @@ parser.add_option('--delay_ub', dest = 'DELAY_UB', default = 2, type = "int", he
 parser.add_option('--delta', dest = "DELTA", default = 0.1, type = "float", help = "confidence in estimates")
 parser.add_option('--n_rep', dest = 'N_REP', default = 1, type = "int", help = "Number of repetitions")
 parser.add_option('--rounding', dest = 'ROUNDING', default = 5, type = "int", help = "Number of kept decimals")
+parser.add_option('--app', dest = 'APPROXIMATE', default = 1, type = "int", help = "Approximation flag")
 parser.add_option('-v', dest = 'VERBOSE', default = '5', type = 'int', help = "Verbose in terms of plots")
 (opts, args) = parser.parse_args()
 
@@ -46,15 +47,19 @@ N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.N_REP
 ROUNDING = opts.ROUNDING
 VERBOSE = opts.VERBOSE
+APPROXIMATE = opts.APPROXIMATE
 assert TAU <= DELAY_UB, "Tau must not be greater than the d_bar upper bound"
+
 #=====================
 # INITIALIZATION 
-#=====================
-policies = [Greedy(2), Ghost(2), UCB(2), FPO_UCB(TAU, DELAY_UB, DELTA, 5)]
-policies_name = ['Greedy', 'Ghost', 'UCB1', 'FPO_UCB']
-#policies = [FPO_UCB(TAU, DELAY_UB, DELTA, ROUNDING, 1)]
-#policies_name = ['FPO_UCB']
+#===================== 
+policies = [Greedy(2), Ghost(2), UCB(2)] 
+policies_name = ['Greedy', 'Ghost', 'UCB1']
+#policies = []
+#policies_name = []
 
+policies.append(FPO_UCB(TAU, DELAY_UB, DELTA, ROUNDING, 5, APPROXIMATE))
+policies_name.append('FPO')
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
 N_POLICIES = len(policies_name)
 cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))
@@ -64,7 +69,7 @@ cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))
 #=====================
 results = []
 for i,p in enumerate(policies):
-    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY)
+    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, APPROXIMATE)
     c_print(5, "=========RUN_POLICIES=========")
     c_print(5, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
     results.append(Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS).getResults())
