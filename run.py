@@ -27,29 +27,34 @@ parser.add_option('--tau', dest = 'TAU', default = '4', type = 'int', help = 'Sa
 parser.add_option('-T', dest = 'T', default = 100, type = "int", help = "Time horizon")
 parser.add_option('-k', dest = 'N_BUCKETS', default = 10, type = "int", help = "Number of buckets")
 parser.add_option('--fra_top', dest = 'FRA_TOP', default = 0.4, type = "float", help = "Fraction of top arms")
-parser.add_option('--alpha_delay', dest = 'ALPHA_DELAY', default = 1.1, type = "float", help = "Mul factor real_delay wrt UpperBound")
-parser.add_option('--nrep', dest = 'NREP', default = 1, type = "int", help = "Number of repetitions")
-parser.add_option('--out', dest = 'VERBOSE', default = '0', type = 'int', help = "Verbose in terms of plots")
+parser.add_option('--delay_ub', dest = 'DELAY_UB', default = 2, type = "int", help = "Gap from the delay bar")
+parser.add_option('--delta', dest = "DELTA", default = 0.1, type = "float", help = "confidence in estimates")
+parser.add_option('--n_rep', dest = 'N_REP', default = 1, type = "int", help = "Number of repetitions")
+parser.add_option('--rounding', dest = 'ROUNDING', default = 5, type = "int", help = "Number of kept decimals")
+parser.add_option('-v', dest = 'VERBOSE', default = '5', type = 'int', help = "Verbose in terms of plots")
 (opts, args) = parser.parse_args()
 
+# Parsing parameters
 GAMMA = opts.GAMMA
 MAX_DELAY = opts.MAX_DELAY
+DELTA = opts.DELTA
 TAU = opts.TAU
 FRA_TOP = opts.FRA_TOP
-ALPHA_DELAY = opts.ALPHA_DELAY
+DELAY_UB = opts.DELAY_UB + MAX_DELAY
 HORIZON = opts.T
 N_BUCKETS = opts.N_BUCKETS
-N_REPETITIONS = opts.NREP
-assert N_BUCKETS >= MAX_DELAY, "The number of arms cannot be lower than the max delay"
-c_print(2, "Run.py, Parameters: horizon: {}, number of buckets: {}, max delay: {}, gamma {}\n".format(HORIZON, N_BUCKETS, MAX_DELAY, GAMMA))
-
+N_REPETITIONS = opts.N_REP
+ROUNDING = opts.ROUNDING
+VERBOSE = opts.VERBOSE
+assert TAU <= DELAY_UB, "Tau must not be greater than the d_bar upper bound"
 #=====================
 # INITIALIZATION 
 #=====================
-delay_bound = int(ALPHA_DELAY*MAX_DELAY)
-assert delay_bound <= N_BUCKETS, "Delay bound has to be lower than the number of buckets" 
-policies = [UCB(2), Greedy(2), Ghost(2), FPO_UCB(TAU, delay_bound, 4)]
-policies_name = ['UCB1', 'Greedy', 'Ghost', 'FPO_UCB']
+policies = [Greedy(2), Ghost(2), UCB(2), FPO_UCB(TAU, DELAY_UB, DELTA, 5)]
+policies_name = ['Greedy', 'Ghost', 'UCB1', 'FPO_UCB']
+#policies = [FPO_UCB(TAU, DELAY_UB, DELTA, ROUNDING, 1)]
+#policies_name = ['FPO_UCB']
+
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
 N_POLICIES = len(policies_name)
 cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))

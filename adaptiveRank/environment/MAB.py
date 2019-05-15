@@ -47,13 +47,18 @@ class MAB(Environment):
             c_print(1, "MAB INIT: Created arm: {}".format(tmpArm))
         return len(means)
 
+
     def compute_states(self):
         '''Called at every step in the play() method. Manages the trajectory evolution.'''
         assert len(self._armsDelay) == len(self._armsStates), "MAB compute_states: Incoherent size"
-        for i, arm, delay in zip(arange(0, self.nbBuckets, 1), self.arms, self._armsDelay):
+
+        for i, arm, delay in zip(self._armsIndexes, self.arms, self._armsDelay):
             self._armsStates[i] = arm.computeState(delay)
-        c_print(1, "MAB.py, compute_state() Round {}, Arms states: {}".format(round, self._armsStates))
+            c_print(1, "MAB.py, states() Index {}, arm {}, delay {}".format(i, arm, delay))
+
+        c_print(1, "MAB.py, states() {}".format(self._armsStates))
         return
+
 
     def play(self, policy, horizon, nbRepetition):
         ''' Called once per policy from __init__ of Evaluation. Rounds scheduler.'''
@@ -63,12 +68,25 @@ class MAB(Environment):
         t = 0
 
         while t < horizon:
+            c_print(1, "\n===\nMAB.py, play(): round {}\n===".format(t))
+
+            if t == 0:
+                self.compute_states()
+                c_print(1, "MAB.py, play(): current delays: {}".format(self._armsDelay))
+                c_print(1, "MAB.py, play(): arm states: {}".format(self._armsStates))
+
             # Structured Choice and Feedback 
             choice = policy.choice(self._armsStates)
 
+            tmp = 0
             for c in choice:
+                tmp = tmp + 1
                 reward = self.arms[c].draw(self._armsDelay[c])
-                c_print(2, "Chosen arm: {} at round: {} with rwd {}".format(c, t, reward))
+
+                c_print(1, "\nMAB.py, play(): Chosen arm: {} at round: {} with rwd {}".format(c, t, reward))
+                c_print(1, "MAB.py play(), arm states: {}".format(self._armsStates))
+                c_print(1, "MAB.py, play(): Suffered delays: {}".format(self._armsDelay))
+
                 policy.update(c, reward, self._armsDelay[c])
                 result.store(t, c, reward)
 
@@ -83,11 +101,12 @@ class MAB(Environment):
                         self._armsDelay[i] = self.maxDelay + 1
                     if i == c:
                         self._armsDelay[i] = 1
-                t = t + 1
+
+                # States update
                 self.compute_states()
 
                 # Additional termination condition due to finite horizon
-                if t == horizon:
+                if t == horizon - 1:
                     return result
-
+                t = t + 1
         return result

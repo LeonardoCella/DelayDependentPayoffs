@@ -20,6 +20,7 @@ class Ghost(Policy):
             index = arms.argmax()
             # RR termination condition
             if index <= self.cIndex:
+                c_print(4, "Ghost rank: {}".format(self.cIndex))
                 self.r = self.cIndex
         else:
             index = self.cIndex + 1
