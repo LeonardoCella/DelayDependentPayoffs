@@ -134,7 +134,7 @@ class FPO_UCB(Policy):
             self.t = self.t + 1
             c_print(1, "FPO.py, update(): rank rwd {} arm {} with delay {}".format(rwd, arm, delay))
             if delay > self.delayUb:
-                delay = 0
+                delay = 1
             self._cumRwdArmDelay[arm,int(delay)-1] += rwd
             self._nbPullsArmDelay[arm, int(delay)-1] += 1
 
