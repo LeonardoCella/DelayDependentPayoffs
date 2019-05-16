@@ -63,11 +63,11 @@ class FPO_UCB(Policy):
                 idx = self._bucketing(index)
                 c_print(1, "FPO.py, choice(): PO, round {} cb {}, pulls: {}".format(self.t, self._cb(), idx))
                 return idx
-            else:
+            else: # Max-Rank
                 self._learnedPO = True
                 index = list(self._maxrank())
                 index.extend(index)
-                c_print(1, "FPO.py, choice(): round {} Max_Rank {}".format(self.t, index))
+                c_print(4, "FPO.py, choice(): round {} Max_Rank {}".format(self.t, index))
                 return index
 
     def _discarded(self):
@@ -105,24 +105,27 @@ class FPO_UCB(Policy):
         zero_idx = where(pulls == 0)[0]
         if len(zero_idx) > 0:
             index = choice(zero_idx)
-            c_print(4, "FPO.py, _maxrank(): unpulled rank: {}".format(index+1))
-            self._nbPullsRanks[index] += 1
         else:
-            ucb_values = [0] * self.delayUb
+            ucb_values = [0.0] * self.delayUb
+            # For each rank
             for rank in range(self.delayUb):
                 mean_rank = 0.0
-                for i in range(rank):
-                    tmp = self._cumRwdArmDelay[self._activeArms[i],rank] / self._nbPullsArmDelay[self._activeArms[i],rank]
+                # For the first rank-arms
+                for i in self._activeArms[:(rank+1)]:
+                    tmp = self._cumRwdArmDelay[i,rank] / self._nbPullsArmDelay[i,rank]
                     mean_rank = mean_rank + tmp
                 ucb_values[rank] = mean_rank /(1+rank) + sqrt((2*log(self.t))/self._nbPullsRanks[rank])
             index = argmax(ucb_values)
-            c_print(1, "FPO.py, _maxrank(): ucbs {} rank: {}".format(ucb_values, index+1))
-        c_print(1, "FPO.py, _maxrank(): Pulling rank {} arms {}".format(index+1, self._activeArms[:index+1]))
+        self._nbPullsRanks[index] += 1
+        # Additional variables for updating with non-stationarities
+        self._pulledRankIndex = index
+        self._freezedTime = self.t
+        c_print(1, "\nFPO.py, _maxrank(): Pulling rank {} arms {} rank_pulls {}\ncumRwdDelay\n{}".format(index+1, self._activeArms[:index+1], self._nbPullsRanks, self._cumRwdArmDelay))
         return self._activeArms[:index+1]
 
     def update(self, arm, rwd, delay):
         c_print(1, "FPO.py, update(): arm {} rwd {} delay {}".format(arm, rwd, delay))
-        if not self._learnedPO: 
+        if not self._learnedPO:
             # Unbiased updates
             if delay == self.tau:
                 self.t = self.t + 1
@@ -132,11 +135,14 @@ class FPO_UCB(Policy):
                 self._meanArms[arm] = self._cumRwdArms[arm]/self._nbPullsArms[arm]
         else: # Max Rank stage
             self.t = self.t + 1
-            c_print(1, "FPO.py, update(): rank rwd {} arm {} with delay {}".format(rwd, arm, delay))
-            if delay > self.delayUb:
-                delay = 1
-            self._cumRwdArmDelay[arm,int(delay)-1] += rwd
-            self._nbPullsArmDelay[arm, int(delay)-1] += 1
+            time_gap = self.t - self._freezedTime
+            # Windows of acceptance
+            if time_gap  > self._pulledRankIndex + 1 and time_gap <= 2 * (self._pulledRankIndex + 1):
+                c_print(1, "Storing Arm {} delay {}".format(arm, delay))
+                self._cumRwdArmDelay[arm, self._pulledRankIndex] += rwd
+
+                self._nbPullsArmDelay[arm, self._pulledRankIndex] += 1
+        return
 
     def _bucketing(self, indexes):
         returned_list = []

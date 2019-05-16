@@ -28,7 +28,7 @@ class MAB(Environment):
         self._armsDelay = zeros(self.nbArms)
         self._armsIndexes = arange(self.nbArms)
         assert self._armsIndexes[-1] == self.nbArms -1, "Wrong arm creation"
-        c_print(4, "MAB.py, INIT: Arm Indexes {}".format(self._armsIndexes))
+        c_print(4, "MAB.py, INIT: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
         self._armsStates = zeros(self.nbArms)
 
     def _arm_creation(self):
