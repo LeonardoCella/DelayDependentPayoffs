@@ -32,7 +32,8 @@ parser.add_option('--delta', dest = "DELTA", default = 0.1, type = "float", help
 parser.add_option('--n_rep', dest = 'N_REP', default = 1, type = "int", help = "Number of repetitions")
 parser.add_option('--rounding', dest = 'ROUNDING', default = 5, type = "int", help = "Number of kept decimals")
 parser.add_option('--bin', dest = 'BINARY', default = 1, type = "int", help = "Binary rewards")
-parser.add_option('-v', dest = 'VERBOSE', default = '5', type = 'int', help = "Verbose in terms of plots")
+parser.add_option('-v', dest = 'VERBOSE', default = '1', type = 'int', help = "Verbose in terms of plots")
+parser.add_option('-s', dest = 'STORE', default = '0', type = 'int', help = "Storing plots")
 (opts, args) = parser.parse_args()
 
 # Parsing parameters
@@ -47,8 +48,8 @@ N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.N_REP
 ROUNDING = opts.ROUNDING
 VERBOSE = opts.VERBOSE
+STORE = opts.STORE
 BINARY = opts.BINARY
-assert TAU <= DELAY_UB, "Tau must not be greater than the d_bar upper bound"
 
 #=====================
 # INITIALIZATION 
@@ -93,4 +94,6 @@ if opts.VERBOSE:
     plt.xlabel('Rounds')
     plt.ylabel('Cumulative Reward')
     plt.grid()
-    plt.show()
+    if STORE > 0:
+        c_print(4, "Savefig")
+        plt.savefig("output/g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
