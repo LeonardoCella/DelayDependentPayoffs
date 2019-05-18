@@ -1,7 +1,7 @@
 # Non-stationary Combinatorial Bandits
 Install the adaptiveRank package with its requirements. Run the commands:
 ```
-python setup.py<br>
+python setup.py
 source adaptiveRank/bin/activate
 ```
 
