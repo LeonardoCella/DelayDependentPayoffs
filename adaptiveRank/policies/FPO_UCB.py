@@ -67,7 +67,7 @@ class FPO_UCB(Policy):
                 self._learnedPO = True
                 index = list(self._maxrank())
                 index.extend(index)
-                c_print(4, "FPO.py, choice(): round {} Max_Rank {}".format(self.t, index))
+                c_print(1, "FPO.py, choice(): round {} Max_Rank {}".format(self.t, index))
                 return index
 
     def _discarded(self):
