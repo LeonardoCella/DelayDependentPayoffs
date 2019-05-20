@@ -1,4 +1,4 @@
-# Non-stationary Combinatorial Bandits
+# Rested Bandits with Delay Dependent Payout. R2DEP.
 Install the adaptiveRank package with its requirements. Run the commands:
 ```
 python setup.py
