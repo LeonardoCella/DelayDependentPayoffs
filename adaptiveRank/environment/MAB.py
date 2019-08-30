@@ -14,14 +14,15 @@ import sortednp as snp
 class MAB(Environment):
     """Multi-armed bandit problem with arms given in the 'arms' list"""
 
-    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate):
+    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate, policy_name):
         self.horizon = horizon
         self.nbBuckets = nbBuckets
         self.gamma = gamma
         self.fraTop = fraTop
         self.maxDelay = maxDelay
-        self._approximate = approximate
-        self.arms = []
+        self._approximate = approximate # Specifies whether to use binary rewards or not
+        self.policy_name = policy_name
+        self.arms = [] # List of Bernoulli objects
 
         # Arm Creation
         self.nbArms = self._arm_creation()
@@ -29,7 +30,8 @@ class MAB(Environment):
         self._armsIndexes = arange(self.nbArms)
         assert self._armsIndexes[-1] == self.nbArms -1, "Wrong arm creation"
         c_print(4, "MAB.py, INIT: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
-        self._armsStates = zeros(self.nbArms)
+        self._armsStates = zeros(self.nbArms) # Expected rewards of each arm according to suffered delays
+        self.r_star = self._r_star_computation()
 
     def _arm_creation(self):
         starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
@@ -47,6 +49,23 @@ class MAB(Environment):
             self.arms.append(tmpArm)
             c_print(1, "MAB INIT: Created arm: {}".format(tmpArm))
         return len(means)
+
+
+    def _r_star_computation(self):
+        avgs = [self._avg(i) for i in  np.arange(1,len(self.arms),1)]
+        r_star = array(avgs).argmax()
+        c_print(4, "Obtained avgs: {}, r_star: {}".format(avgs, r_star))
+        return r_star
+
+
+    def _avg(self, r):
+        c_print(1, r)
+        delayed_means = [arm.computeState(r) for arm in self.arms]
+        c_print(1, "First {} arm means: {}".format(r, delayed_means[:r]))
+        partial_sum = sum(delayed_means[:r])
+        avg = partial_sum / (r)
+        c_print(1, "Partial Sum {}, Average {}. over {} arms".format(partial_sum, avg, r))
+        return avg
 
 
     def compute_states(self):
@@ -75,6 +94,9 @@ class MAB(Environment):
                 self.compute_states()
                 c_print(1, "MAB.py, play(): current delays: {}".format(self._armsDelay))
                 c_print(1, "MAB.py, play(): arm states: {}".format(self._armsStates))
+                # RStar policy update
+                if self.policy_name == "RStar":
+                    policy.initialize(self.r_star)
 
             # Structured Choice and Feedback 
             choice = policy.choice(self._armsStates)
