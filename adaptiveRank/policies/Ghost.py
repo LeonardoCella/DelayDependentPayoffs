@@ -9,20 +9,20 @@ from adaptiveRank.policies.Policy import Policy
 from adaptiveRank.tools.io import c_print
 
 class Ghost(Policy):
-    def __init__(self, MOD = 1):
+    def __init__(self, T, MOD):
         self.cIndex = -1 # last round robin index
         self.r = -1 # rank
-        self.MOD = MOD # Specifies the running mod
+        self.MOD =  MOD
 
     def choice(self, arms):
-        # First round robin condition
+        # Rank Identification
         if self.r == -1:
             index = arms.argmax()
             # RR termination condition
             if index <= self.cIndex:
                 c_print(4, "Ghost rank: {}".format(self.cIndex))
                 self.r = self.cIndex
-        else:
+        else: # RR 
             index = self.cIndex + 1
             if index > self.r:
                 index = 0

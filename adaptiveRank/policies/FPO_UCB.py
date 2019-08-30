@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class FPO_UCB(Policy):
     '''FastPartialOrder and MaxRank'''
 
-    def __init__(self, tau, delayUb, delta = 0.1, rounding = 5, MOD = 2, approximate = False):
+    def __init__(self, T, tau, delayUb, delta = 0.1, rounding = 5, MOD = 2, approximate = False):
         c_print(4, "\nFPO_UCB Init. Tau {}, DelayUB {}, delta {}".format(tau, delayUb, delta))
         # Non-stationarity parameters
         self.delayUb = delayUb
@@ -23,6 +23,7 @@ class FPO_UCB(Policy):
         self.t = 0 # round iterator
         self.s = 0 # phase iterator
         self._delta = delta
+        self._horizon = T
         self._rounding = rounding
         self._MOD = MOD
         self._APP = approximate
@@ -67,7 +68,7 @@ class FPO_UCB(Policy):
                 self._learnedPO = True
                 index = list(self._maxrank())
                 index.extend(index)
-                c_print(1, "FPO.py, choice(): round {} Max_Rank {}".format(self.t, index))
+                c_print(4, "FPO.py, choice(): round {} Max_Rank {}\n".format(self.t, index))
                 return index
 
     def _discarded(self):
@@ -120,7 +121,7 @@ class FPO_UCB(Policy):
         # Additional variables for updating with non-stationarities
         self._pulledRankIndex = index
         self._freezedTime = self.t
-        c_print(1, "\nFPO.py, _maxrank(): Pulling rank {} arms {} rank_pulls {}\ncumRwdDelay\n{}".format(index+1, self._activeArms[:index+1], self._nbPullsRanks, self._cumRwdArmDelay))
+        c_print(4, "\nFPO.py, _maxrank(): Pulling rank {} arms {} rank_pulls {} ucb_values {}".format(index+1, self._activeArms[:index+1], self._nbPullsRanks, ucb_values))
         return self._activeArms[:index+1]
 
     def update(self, arm, rwd, delay):

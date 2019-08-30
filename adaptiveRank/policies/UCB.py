@@ -13,9 +13,10 @@ from adaptiveRank.tools.io import c_print
 class UCB(Policy):
     '''UCB1 Policy'''
 
-    def __init__(self, MOD):
+    def __init__(self, T, MOD):
         self.t = 0
         self.MOD = MOD
+        self.T = T
 
     def choice(self, arms):
         # New round
