@@ -32,7 +32,8 @@ class ORE2(Policy):
         # Policy "state": RANKS Data Structures
         self._activeArms = [] # mean ascending sorted arm indexes
         self._activeRanks = [] # rank indexes
-        self._learnedPO = False # canary alerting the rank elimination stage
+        self._learnedPO = False # canary stating if the arm ordering was learnt
+        self._learnedRank = False # canary stating if the rank was learnt
 
 
     def choice(self, arms):
@@ -44,6 +45,8 @@ class ORE2(Policy):
             self._nbPullsArms = [0] * self._nArms
             self._nbPullsRanks = [0] * self._nArms
             self._cumRwdArms = [0.0] * self._nArms
+            self._cumRwdArmDelay = zeros((self._nArms, self._nArms))
+            self._nbPullsArmDelay = zeros((self._nArms, self._nArms))
             self._cumRwdRanks = [0.0] * self._nArms
             self._meanArms = [0.0] * self._nArms
             self._meanRanks = [0.0] * self._nArms
@@ -56,7 +59,7 @@ class ORE2(Policy):
             return idx
 
         # Arm Elimination
-        if self._samplingRequired():
+        if not self._learnedPO and self._samplingRequired():
             c_print(1, "PO.py, not ordered DISCARDING on active arms {}".format(self._activeArms))
             self._discarded() # it discards at most a single arm
             idx = self._bucketing(self._activeArms)
@@ -64,10 +67,78 @@ class ORE2(Policy):
             return idx
         else: # Rank Elimination
             self._learnedPO = True
-            index = list(self._maxrank()) # _maxrank() returns the list of top-x arms
-            index.extend(index)
-            c_print(4, "ORE.py, choice(): round {} Max_Rank {}\n".format(self._t, index))
+            index = []
+            # Playing all active ranks Ts + 1 times.
+            for rank_id in self._activeRanks:
+                # Additional variables for updating with non-stationarities
+                self._pulledRankIndex = rank_id
+                self._freezedTime = self._t
+                tmp_index = list(self._activeArms[:rank_id+1])
+                c_print(4, "\nORE.py, _maxrank(): Pulling rank {} arms {}".format(rank_id+1, tmp_index))
+                index.extend(tmp_index) # Calibration append
+                for _ in range(int(self._Ts() / (self._r * len(self._activeRanks)))): # Ts extension
+                    index.extend(tmp_index)
+            self._r = self._r + 1
+            self._rankElimination()
+            c_print(4, "ORE.py, choice:round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             return index
+
+
+    def _rankElimination(self):
+        assert len(self._activeRanks) == self._nArms - self._s, "Incoherent Rank Elimination"
+        # Update Ranks Statistics
+        for rank in self._activeRanks:
+            mean_rank = 0.0
+            for i in self._activeArms[:(rank+1)]:
+                tmp = self._cumRwdArmDelay[i,rank] / self._nbPullsArmDelay[i,rank]
+                mean_rank = mean_rank + tmp
+            self._meanRanks[rank] = mean_rank / (rank + 1)
+
+        # Update the set of Active Ranks 
+        max_rank_id = argmax(self._meanRanks)
+        for rank_id in self._activeRanks:
+            ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
+            # Rank Elimination
+            if ranks_gap > self._cb():
+                self._s = self._s + 1
+                self._activeRanks.remove(rank_id)
+        return 
+
+
+    def update(self, arm, rwd, delay):
+        c_print(1, "ORE.py, update(): arm {} rwd {} delay {}".format(arm, rwd, delay))
+        if not self._learnedPO:
+            # Unbiased updates
+            if delay == self._tau:
+                self._t = self._t + 1
+                c_print(1, "ORE.py, update(): unbiased sample")
+                self._cumRwdArms[arm] += rwd
+                self._nbPullsArms[arm] = self._nbPullsArms[arm] + 1
+                self._meanArms[arm] = self._cumRwdArms[arm]/self._nbPullsArms[arm]
+        else: # Max Rank stage
+            self._t = self._t + 1
+            time_gap = self._t - self._freezedTime
+            # Windows of acceptance
+            if time_gap  > self._pulledRankIndex + 1 and time_gap <= 2 * (self._pulledRankIndex + 1):
+                c_print(1, "Storing Arm {} delay {}".format(arm, delay))
+                self._cumRwdArmDelay[arm, self._pulledRankIndex] += rwd
+
+                self._nbPullsArmDelay[arm, self._pulledRankIndex] += 1
+        return
+
+
+    def _cb(self):
+        # Confidence bounds definition depending on the stage
+        if self._learnedPO: # CB for Rank Elimination
+            return round(sqrt( log((self._nArms * log(log(self.horizon)))/self.delta) * (self._nArms / (2 * self._Ts()))), self._rounding)
+        else: # CB for Arm Ordering Estimation
+            return round(sqrt(log((2 * self._nArms * self._r * (self._r+1))/(self.delta)) * (1/(10*self._r))), self._rounding)
+
+
+    def _Ts(self):
+        times = int(10000**(1 - 2**(-self._r)))
+        c_print(4, "_Ts(): s {} , Ts {}".format(self._r, times))
+        return times
 
 
     def _samplingRequired(self):
@@ -83,7 +154,7 @@ class ORE2(Policy):
                 gap_r = self._meanArms[sorted_idx[i]] - self._meanArms[sorted_idx[i+1]]
                 gap_r = round(gap_r, self._rounding)
 
-            # Checking Overlapping Conditions
+            # Checking if more Sampling is required based on Gaps
             current_cb = self._cb()
             if i == 0:
                 if gap_r < current_cb:
@@ -98,13 +169,13 @@ class ORE2(Policy):
                     c_print(1, "ORE.py, NOT ORDERED(): Gap_Right {} Gap_Left {} vs CB {}, arm {} with Index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, gap_l, current_cb, i, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
                     return True
 
-        # All arms satisfy the separation condition
+        # All arms are Separeted
         if not self._learnedPO:
-            c_print(4, "ORE.py, ORDERED(): Learned partial order. Active arms {}, sorted {}, means {}".format(self._activeArms, sorted_idx, self._meanArms))
+            c_print(4, "\n===LEARNED ARM ORDERING\nORE.py, ORDERED(): Learned partial order. Active arms {}, sorted {}, means {}".format(self._activeArms, sorted_idx, self._meanArms))
             # Variable setting for the next phase
             self._r = 1
             self._s = 0
-            self._activeArms = sorted_idx
+            self._activeArms = [i for i in range(self._nArms)]
 
         return False
 
@@ -135,15 +206,15 @@ class ORE2(Policy):
             if i == 0:
                 if gap_r > current_cb and sorted_idx[i] in self._activeArms: # Discarding the first index
                     arm_deletion = True
-                    c_print(4, "ORE.py, DISCARDING(): Gap_Right {} vs CB {}, arm 0 index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
+                    c_print(4, "\nORE.py, DISCARDING(): Gap_Right {} vs CB {}, arm 0 index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
             if i == len_activeArms - 1:
                 if gap_l > current_cb and sorted_idx[i] in self._activeArms: # Discarding the last index
                     arm_deletion = True
-                    c_print(4, "ORE.py, DISCARDING(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
+                    c_print(4, "\nORE.py, DISCARDING(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
             if i!= len_activeArms - 1 and i!= 0:
                 if gap_l > current_cb and gap_r > current_cb and sorted_idx[i] in self._activeArms: # Discarding a in the middle index
                     arm_deletion = True
-                    c_print(4, "ORE.py, DISCARDING(): Gap_Right {} Gap_Left {} vs CB {}, arm {} with Index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, gap_l, current_cb, i, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
+                    c_print(4, "\nORE.py, DISCARDING(): Gap_Right {} Gap_Left {} vs CB {}, arm {} with Index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, gap_l, current_cb, i, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
 
             if arm_deletion: # Arm deletion based on one of previous cases
                 idx = self._activeArms.remove(sorted_idx[i])
@@ -151,50 +222,6 @@ class ORE2(Policy):
                 return 
         return
 
-
-    def _maxrank(self):
-        pulls = array(self._nbPullsRanks)
-        zero_idx = where(pulls == 0)[0]
-        if len(zero_idx) > 0:
-            index = choice(zero_idx)
-        else:
-            ucb_values = [0.0] * self.delayUb
-            # For each rank
-            for rank in range(self.delayUb):
-                mean_rank = 0.0
-                # For the first rank-arms
-                for i in self._activeArms[:(rank+1)]:
-                    tmp = self._cumRwdArmDelay[i,rank] / self._nbPullsArmDelay[i,rank]
-                    mean_rank = mean_rank + tmp
-                ucb_values[rank] = mean_rank /(1+rank) + sqrt((2*log(self._t))/self._nbPullsRanks[rank])
-            index = argmax(ucb_values)
-        self._nbPullsRanks[index] += 1
-        # Additional variables for updating with non-stationarities
-        self._pulledRankIndex = index
-        self._freezedTime = self._t
-        c_print(4, "\nORE.py, _maxrank(): Pulling rank {} arms {} rank_pulls {} ucb_values {}".format(index+1, self._activeArms[:index+1], self._nbPullsRanks, ucb_values))
-        return self._activeArms[:index+1]
-
-    def update(self, arm, rwd, delay):
-        c_print(1, "ORE.py, update(): arm {} rwd {} delay {}".format(arm, rwd, delay))
-        if not self._learnedPO:
-            # Unbiased updates
-            if delay == self._tau:
-                self._t = self._t + 1
-                c_print(1, "ORE.py, update(): unbiased sample")
-                self._cumRwdArms[arm] += rwd
-                self._nbPullsArms[arm] = self._nbPullsArms[arm] + 1
-                self._meanArms[arm] = self._cumRwdArms[arm]/self._nbPullsArms[arm]
-        else: # Max Rank stage
-            self._t = self._t + 1
-            time_gap = self._t - self._freezedTime
-            # Windows of acceptance
-            if time_gap  > self._pulledRankIndex + 1 and time_gap <= 2 * (self._pulledRankIndex + 1):
-                c_print(1, "Storing Arm {} delay {}".format(arm, delay))
-                self._cumRwdArmDelay[arm, self._pulledRankIndex] += rwd
-
-                self._nbPullsArmDelay[arm, self._pulledRankIndex] += 1
-        return
 
     def _bucketing(self, indexes):
         returned_list = []
@@ -228,13 +255,3 @@ class ORE2(Policy):
 
         assert len(returned_list) == 2*self._tau*ceil(len_idx/self._tau), "Inconsistent bucketing"
         return returned_list
-
-    def _cb(self):
-        # Confidence bounds definition depending on the stage
-        if self._learnedPO:
-            return round(sqrt( log((self.delayUb * log(log(self.horizon)))/self.delta) * (self.delayUb / (2 * self._Ts()))), self._rounding)
-        else:
-            return round(sqrt(log((2 * self._nArms * self._r * (self._r+1))/(self.delta)) * (1/(10*self._r))), self._rounding)
-
-    def _Ts(self):
-        return self.horizon**(1 - 2**(-self._s))
