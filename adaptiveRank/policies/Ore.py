@@ -24,6 +24,7 @@ class ORE2(Policy):
         self._rounding = rounding # rounding approximation
         self.MOD = MOD
         self.APP = approximate
+        self._JUMP_ARMORDERING = True
 
         # Policy "state"
         self._t = 0 # round iterator, necessary for filtering biased rewards
@@ -67,20 +68,27 @@ class ORE2(Policy):
             return idx
         else: # Rank Elimination
             self._learnedPO = True
-            index = []
+            index = list()
+            self._freezedTime = self._t
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
                 # Additional variables for updating with non-stationarities
                 self._pulledRankIndex = rank_id
-                self._freezedTime = self._t
+                # List extension: calibration + Ts
+                c_print(4, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
                 tmp_index = list(self._activeArms[:rank_id+1])
-                c_print(4, "\nORE.py, _maxrank(): Pulling rank {} arms {}".format(rank_id+1, tmp_index))
-                index.extend(tmp_index) # Calibration append
-                for _ in range(int(self._Ts() / (self._r * len(self._activeRanks)))): # Ts extension
-                    index.extend(tmp_index)
+                nbAppending = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
+                c_print(4, "ORE.py, CHOICE appending list {} for {}+1 times".format(tmp_index, nbAppending))
+                index += tmp_index # Calibration append
+                for _ in range(nbAppending): # Ts extension
+                    index += tmp_index
+                c_print(4, "ORE.py, CHOICE final list for rank {}: {}".format(rank_id, index))
+                for arm_id in self._activeArms[:rank_id+1]:
+                    self._nbPullsArmDelay[arm_id ,rank_id] = self._nbPullsArmDelay[arm_id ,rank_id] + self._Ts() 
             self._r = self._r + 1
             self._rankElimination()
-            c_print(4, "ORE.py, choice:round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+            c_print(4, "ORE.py, Ranks Means {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay[:,rank_id]))
+            c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             return index
 
 
@@ -136,8 +144,7 @@ class ORE2(Policy):
 
 
     def _Ts(self):
-        times = int(10000**(1 - 2**(-self._r)))
-        c_print(4, "_Ts(): s {} , Ts {}".format(self._r, times))
+        times = int(100**(1 - 2**(-self._r)))
         return times
 
 
@@ -157,25 +164,28 @@ class ORE2(Policy):
             # Checking if more Sampling is required based on Gaps
             current_cb = self._cb()
             if i == 0:
-                if gap_r < current_cb:
+                if gap_r < current_cb and not self._JUMP_ARMORDERING:
                     c_print(1, "ORE.py, NOT ORDERED(): Gap_Right {} vs CB {}, arm 0 index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
                     return True
             if i == len_activeArms - 1:
-                if gap_l < current_cb:
+                if gap_l < current_cb and not self._JUMP_ARMORDERING:
                     c_print(1, "ORE.py, NOT ORDERED(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
                     return True
-            if i!= len_activeArms - 1 and i!= 0:
+            if i!= len_activeArms - 1 and i!= 0 and not self._JUMP_ARMORDERING:
                 if gap_l < current_cb or gap_r < current_cb:
                     c_print(1, "ORE.py, NOT ORDERED(): Gap_Right {} Gap_Left {} vs CB {}, arm {} with Index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, gap_l, current_cb, i, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
                     return True
 
         # All arms are Separeted
-        if not self._learnedPO:
+        if not self._learnedPO :
+            if self._JUMP_ARMORDERING:
+                self._meanArms = [1.0, 0.945970, 0.89811, 0.862933, 0.68627, 0.46153, 0.0]
+            sorted_idx = argsort(self._meanArms)[::-1]
             c_print(4, "\n===LEARNED ARM ORDERING\nORE.py, ORDERED(): Learned partial order. Active arms {}, sorted {}, means {}".format(self._activeArms, sorted_idx, self._meanArms))
             # Variable setting for the next phase
             self._r = 1
             self._s = 0
-            self._activeArms = [i for i in range(self._nArms)]
+            self._activeArms = sorted_idx
 
         return False
 
