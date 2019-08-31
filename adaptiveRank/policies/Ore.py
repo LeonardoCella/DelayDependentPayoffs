@@ -35,6 +35,8 @@ class ORE2(Policy):
         self._activeRanks = [] # rank indexes
         self._learnedPO = False # canary stating if the arm ordering was learnt
         self._learnedRank = False # canary stating if the rank was learnt
+        self._jump_list = [] # binary list denoting skipping rounds due to calibration
+        self._jump_rank = [] # rank list denoting current rank to be updated after calibration
 
 
     def choice(self, arms):
@@ -69,7 +71,12 @@ class ORE2(Policy):
         else: # Rank Elimination
             self._learnedPO = True
             index = list()
+            jump_list = list()
+            jump_rank = list()
+            # Stage 1: Sampling all active arms
             self._freezedTime = self._t
+            nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
+            c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
                 # Additional variables for updating with non-stationarities
@@ -77,18 +84,21 @@ class ORE2(Policy):
                 # List extension: calibration + Ts
                 c_print(4, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
                 tmp_index = list(self._activeArms[:rank_id+1])
-                nbAppending = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
-                c_print(4, "ORE.py, CHOICE appending list {} for {}+1 times".format(tmp_index, nbAppending))
-                index += tmp_index # Calibration append
-                for _ in range(nbAppending): # Ts extension
+                jump_list += [0] * (rank_id+1)
+                jump_rank += [rank_id] * (rank_id+1)
+                index += tmp_index # Rank Calibration
+                for _ in range(nbAppends): # Effective pulls
                     index += tmp_index
+                    jump_rank += [rank_id] * (rank_id+1)
+                    jump_list += [1] * (rank_id+1)
                 c_print(4, "ORE.py, CHOICE final list for rank {}: {}".format(rank_id, index))
-                for arm_id in self._activeArms[:rank_id+1]:
-                    self._nbPullsArmDelay[arm_id ,rank_id] = self._nbPullsArmDelay[arm_id ,rank_id] + self._Ts() 
+            # Stage 2: Rank Elimination
             self._r = self._r + 1
             self._rankElimination()
             c_print(4, "ORE.py, Ranks Means {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay[:,rank_id]))
             c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+            self._jump_list = jump_list
+            self._jump_rank = jump_rank
             return index
 
 
@@ -106,6 +116,8 @@ class ORE2(Policy):
         max_rank_id = argmax(self._meanRanks)
         for rank_id in self._activeRanks:
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
+            if ranks_gap > 0:
+                c_print(4, "RANK ELIMINATION(), Trying to Eliminate Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
             # Rank Elimination
             if ranks_gap > self._cb():
                 self._s = self._s + 1
@@ -124,28 +136,31 @@ class ORE2(Policy):
                 self._nbPullsArms[arm] = self._nbPullsArms[arm] + 1
                 self._meanArms[arm] = self._cumRwdArms[arm]/self._nbPullsArms[arm]
         else: # Max Rank stage
-            self._t = self._t + 1
             time_gap = self._t - self._freezedTime
+            self._t = self._t + 1
             # Windows of acceptance
-            if time_gap  > self._pulledRankIndex + 1 and time_gap <= 2 * (self._pulledRankIndex + 1):
+            if self._jump_list[time_gap]:
+                pulledRankIndex = self._jump_rank[time_gap]
                 c_print(1, "Storing Arm {} delay {}".format(arm, delay))
-                self._cumRwdArmDelay[arm, self._pulledRankIndex] += rwd
-
-                self._nbPullsArmDelay[arm, self._pulledRankIndex] += 1
+                self._cumRwdArmDelay[arm, pulledRankIndex] += rwd
+                self._nbPullsArmDelay[arm, pulledRankIndex] += 1
         return
 
 
     def _cb(self):
         # Confidence bounds definition depending on the stage
         if self._learnedPO: # CB for Rank Elimination
-            return round(sqrt( log((self._nArms * log(log(self.horizon)))/self.delta) * (self._nArms / (2 * self._Ts()))), self._rounding)
+            return round(sqrt( log(((self._Ts() + self._nArms) * self._nArms)/self.delta) * (self._nArms / (2 * self._Ts()))), self._rounding)
         else: # CB for Arm Ordering Estimation
             return round(sqrt(log((2 * self._nArms * self._r * (self._r+1))/(self.delta)) * (1/(10*self._r))), self._rounding)
 
 
     def _Ts(self):
-        times = int(100**(1 - 2**(-self._r)))
-        return times
+        return int(100**(1 - 2**(-self._r)))
+
+
+    def _times(self):
+        return max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
 
 
     def _samplingRequired(self):
