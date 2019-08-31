@@ -29,7 +29,7 @@ parser.add_option('--tau', dest = 'TAU', default = '5', type = 'int', help = 'Sa
 parser.add_option('-T', dest = 'T', default = 500000, type = "int", help = "Time horizon")
 parser.add_option('-k', dest = 'N_BUCKETS', default = 4, type = "int", help = "Number of buckets")
 parser.add_option('--fra_top', dest = 'FRA_TOP', default = 0.2, type = "float", help = "Fraction of top arms")
-parser.add_option('--delay_ub', dest = 'DELAY_UB', default = 2, type = "int", help = "Gap from the delay bar")
+#parser.add_option('--delay_ub', dest = 'DELAY_UB', default = 2, type = "int", help = "Gap from the delay bar")
 parser.add_option('--delta', dest = "DELTA", default = 0.1, type = "float", help = "confidence in estimates")
 parser.add_option('--n_rep', dest = 'N_REP', default = 1, type = "int", help = "Number of repetitions")
 parser.add_option('--rounding', dest = 'ROUNDING', default = 5, type = "int", help = "Number of kept decimals")
@@ -44,7 +44,7 @@ MAX_DELAY = opts.MAX_DELAY
 DELTA = opts.DELTA
 TAU = opts.TAU
 FRA_TOP = opts.FRA_TOP
-DELAY_UB = opts.DELAY_UB + MAX_DELAY
+#DELAY_UB = opts.DELAY_UB + MAX_DELAY
 HORIZON = opts.T
 N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.N_REP
@@ -56,14 +56,12 @@ BINARY = opts.BINARY # Binary rewards
 #=====================
 # INITIALIZATION 
 #===================== 
-policies = [Greedy(HORIZON, 2), Ghost(HORIZON, 2), RStar(HORIZON, 2), UCB(HORIZON, 2)] 
-policies_name = ['Greedy', 'Ghost', 'RStar', 'UCB1']
+policies = [RStar(HORIZON, 2), UCB(HORIZON, 2)] 
+policies_name = ['Ghost', 'UCB1']
 # Appending our lerning policy
-policies.append(FPO_UCB(HORIZON, TAU, DELAY_UB, DELTA, ROUNDING, 5, BINARY))
-policies_name.append('FPO')
+policies.append(ORE2(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY))
+policies_name.append('Low Ranker')
 
-policies = [ORE2(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY), RStar(HORIZON, 2)]
-policies_name = ['ORE2', 'RStar']
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
 N_POLICIES = len(policies_name)
 cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))

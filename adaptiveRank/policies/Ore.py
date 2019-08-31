@@ -24,7 +24,7 @@ class ORE2(Policy):
         self._rounding = rounding # rounding approximation
         self.MOD = MOD
         self.APP = approximate
-        self._JUMP_ARMORDERING = True
+        self._JUMP_ARMORDERING = False # TESTING RANK ELIMINATION ONLY
 
         # Policy "state"
         self._t = 0 # round iterator, necessary for filtering biased rewards
@@ -78,7 +78,7 @@ class ORE2(Policy):
             self._freezedTime = self._t
             nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
             c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
-            c_print(4, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
+            c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
             c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
@@ -117,10 +117,9 @@ class ORE2(Policy):
         max_rank_id = argmax(self._meanRanks)
         for rank_id in self._activeRanks:
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
-            c_print(4,"\nRANK ELIMINATION(), Trying to Eliminate Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
             # Rank Elimination
             if ranks_gap > self._cb():
-                c_print(4, "RANK ELIMINATION(), ELIMINATING {}".format(rank_id))
+                c_print(4,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
         return 

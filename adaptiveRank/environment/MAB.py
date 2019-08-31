@@ -95,7 +95,7 @@ class MAB(Environment):
                 c_print(1, "MAB.py, play(): current delays: {}".format(self._armsDelay))
                 c_print(1, "MAB.py, play(): arm states: {}".format(self._armsStates))
                 # RStar policy update
-                if self.policy_name == "RStar":
+                if self.policy_name == "Ghost":
                     policy.initialize(self.r_star)
 
             # Structured Choice and Feedback 
