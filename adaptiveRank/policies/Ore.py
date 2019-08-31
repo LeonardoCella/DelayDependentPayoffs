@@ -70,6 +70,7 @@ class ORE2(Policy):
             return idx
         else: # Rank Elimination
             self._learnedPO = True
+            self._roundLearnedPO = self._t
             index = list()
             jump_list = list()
             jump_rank = list()
@@ -77,12 +78,14 @@ class ORE2(Policy):
             self._freezedTime = self._t
             nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
             c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
+            c_print(4, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
+            c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
                 # Additional variables for updating with non-stationarities
                 self._pulledRankIndex = rank_id
                 # List extension: calibration + Ts
-                c_print(4, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
+                c_print(1, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
                 tmp_index = list(self._activeArms[:rank_id+1])
                 jump_list += [0] * (rank_id+1)
                 jump_rank += [rank_id] * (rank_id+1)
@@ -91,12 +94,10 @@ class ORE2(Policy):
                     index += tmp_index
                     jump_rank += [rank_id] * (rank_id+1)
                     jump_list += [1] * (rank_id+1)
-                c_print(4, "ORE.py, CHOICE final list for rank {}: {}".format(rank_id, index))
+                c_print(1, "ORE.py, CHOICE final list for rank {}: {}".format(rank_id, index))
             # Stage 2: Rank Elimination
             self._r = self._r + 1
             self._rankElimination()
-            c_print(4, "ORE.py, Ranks Means {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay[:,rank_id]))
-            c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             self._jump_list = jump_list
             self._jump_rank = jump_rank
             return index
@@ -116,10 +117,10 @@ class ORE2(Policy):
         max_rank_id = argmax(self._meanRanks)
         for rank_id in self._activeRanks:
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
-            if ranks_gap > 0:
-                c_print(4, "RANK ELIMINATION(), Trying to Eliminate Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
+            c_print(4,"\nRANK ELIMINATION(), Trying to Eliminate Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
             # Rank Elimination
             if ranks_gap > self._cb():
+                c_print(4, "RANK ELIMINATION(), ELIMINATING {}".format(rank_id))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
         return 
@@ -156,7 +157,7 @@ class ORE2(Policy):
 
 
     def _Ts(self):
-        return int(100**(1 - 2**(-self._r)))
+        return int((self.horizon - self._roundLearnedPO) ** (1 - 2**(-self._r)))
 
 
     def _times(self):
