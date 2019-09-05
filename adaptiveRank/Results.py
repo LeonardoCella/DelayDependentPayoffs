@@ -11,11 +11,18 @@ class Result:
         # Initially all the rounds have no choices or rewards.
         self.choices = np.zeros(horizon, dtype=np.int)
         self.rewards = np.zeros(horizon)
+        self.nbArms = 0
 
     # Store the info for round t
     def store(self, t, choice, reward):
         self.choices[t] = choice
         self.rewards[t] = reward
+
+    def setNbArms(self, n):
+        self.nbArms = n
+
+    def getNbArms(self):
+        return self.nbArms
 
     def getCumSumRwd(self):
         return np.cumsum(self.rewards)

@@ -39,6 +39,7 @@ class Evaluation:
         for i, result in repetitionIndex_results:
             self.rewards[i] = result.getReward() # Over the flattened array
             self.cumSumRwd[i] = result.getCumSumRwd()
+            self.nbArms = result.getNbArms()
 
         c_print(2, "EVALUATION: End iteration over {} repetitions for {}".format(nbRepetitions, policyName))
 
@@ -57,3 +58,6 @@ class Evaluation:
 
     def getResults(self):
         return self.result 
+
+    def getNbArms(self):
+        return self.nbArms

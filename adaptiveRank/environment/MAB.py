@@ -44,6 +44,10 @@ class MAB(Environment):
         ''' Called once per policy from __init__ of Evaluation. Rounds scheduler.'''
         c_print(1, "MAB.py, play()")
 
+        # Result data structure initialization
+        result = Result(horizon)
+        t = 0
+
         # Arm Creation
         self.nbArms = self._arm_creation(nbRepetition)
         self._armsDelay = zeros(self.nbArms)
@@ -53,9 +57,7 @@ class MAB(Environment):
         self._armsStates = zeros(self.nbArms) # Expected rewards of each arm according to suffered delays
         self.r_star = self._r_star_computation()
 
-        # Result data structure initialization
-        result = Result(horizon)
-        t = 0
+        result.setNbArms(self.nbArms)
 
         while t < horizon:
             c_print(1, "\n===\nMAB.py, play(): round {}\n===".format(t))

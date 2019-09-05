@@ -76,7 +76,9 @@ for i,p in enumerate(policies):
     mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, BINARY, policies_name[i])
     c_print(5, "=========RUN_POLICIES=========")
     c_print(5, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
-    results.append(Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS).getResults())
+    evaluation = Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS)
+    results.append(evaluation.getResults())
+    nbArms = evaluation.getNbArms()
 
 #=====================
 # PLOTTING RESULTS
@@ -86,7 +88,7 @@ if opts.VERBOSE:
     MARKERS = ['o', '+', 'x', 'v']
     plt_fn =  plt.plot
     fig = plt.figure()
-    plt.title("Arms: {}, Gamma: {}, Max Delay: {}, Fraction Top-Arms: {}".format(mab.nbArms, GAMMA, MAX_DELAY, FRA_TOP))
+    plt.title("Gamma: {}, Max Delay: {}, Arms: {}, Fraction Top-Arms: {}".format(GAMMA, MAX_DELAY, nbArms, FRA_TOP))
     ax = fig.add_subplot(1,1,1)
     i = 0
     for name,avg,std in results:
