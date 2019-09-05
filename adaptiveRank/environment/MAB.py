@@ -9,6 +9,7 @@ from adaptiveRank.tools.io import c_print
 from adaptiveRank.arm.Bernoulli import Bernoulli
 
 from numpy import arange, around, array, linspace, unique, zeros
+from random import seed, randint
 import sortednp as snp
 
 class MAB(Environment):
@@ -23,49 +24,8 @@ class MAB(Environment):
         self._approximate = approximate # Specifies whether to use binary rewards or not
         self.policy_name = policy_name
         self.arms = [] # List of Bernoulli objects
-
-        # Arm Creation
-        self.nbArms = self._arm_creation()
-        self._armsDelay = zeros(self.nbArms)
-        self._armsIndexes = arange(self.nbArms)
-        assert self._armsIndexes[-1] == self.nbArms -1, "Wrong arm creation"
-        c_print(4, "MAB.py, INIT: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
-        self._armsStates = zeros(self.nbArms) # Expected rewards of each arm according to suffered delays
-        self.r_star = self._r_star_computation()
-
-    def _arm_creation(self):
-        starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
-        c_print(1, "Buckets: {}".format(starting_grid))
-        delta = 1.0/(self.nbBuckets) # Previously adopted delta
-        new_extreme = delta*self.fraTop*self.nbBuckets
-        good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
-        c_print(1, "Good arms: {}".format(good_arms))
-        means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
-        means = 1 - unique(means)
-        c_print(4, "\n=========MAB_INIT=========")
-        c_print(4, "MAB.py, Arm means: {}".format(means))
-        for mu in means:
-            tmpArm = Bernoulli(mu, self.gamma, self.maxDelay, self._approximate)
-            self.arms.append(tmpArm)
-            c_print(1, "MAB INIT: Created arm: {}".format(tmpArm))
-        return len(means)
-
-
-    def _r_star_computation(self):
-        avgs = [self._avg(i) for i in  np.arange(1,len(self.arms),1)]
-        r_star = array(avgs).argmax()
-        c_print(4, "Obtained avgs: {}, r_star: {}".format(avgs, r_star))
-        return r_star
-
-
-    def _avg(self, r):
-        c_print(1, r)
-        delayed_means = [arm.computeState(r) for arm in self.arms]
-        c_print(1, "First {} arm means: {}".format(r, delayed_means[:r]))
-        partial_sum = sum(delayed_means[:r])
-        avg = partial_sum / (r)
-        c_print(1, "Partial Sum {}, Average {}. over {} arms".format(partial_sum, avg, r))
-        return avg
+        self.nbArms = 0
+        self.r_star = 0
 
 
     def compute_states(self):
@@ -84,6 +44,16 @@ class MAB(Environment):
         ''' Called once per policy from __init__ of Evaluation. Rounds scheduler.'''
         c_print(1, "MAB.py, play()")
 
+        # Arm Creation
+        self.nbArms = self._arm_creation(nbRepetition)
+        self._armsDelay = zeros(self.nbArms)
+        self._armsIndexes = arange(self.nbArms)
+        assert self._armsIndexes[-1] == self.nbArms -1, "Wrong arm creation"
+        c_print(4, "MAB.py, INIT: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
+        self._armsStates = zeros(self.nbArms) # Expected rewards of each arm according to suffered delays
+        self.r_star = self._r_star_computation()
+
+        # Result data structure initialization
         result = Result(horizon)
         t = 0
 
@@ -133,3 +103,41 @@ class MAB(Environment):
                     return result
                 t = t + 1
         return result
+
+
+    def _arm_creation(self, seed_init):
+        seed(seed_init)
+        starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
+        c_print(1, "Buckets: {}".format(starting_grid))
+        delta = 1.0/(self.nbBuckets) # Previously adopted delta
+        new_extreme = delta*self.fraTop*self.nbBuckets
+        good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
+        c_print(1, "Good arms: {}".format(good_arms))
+        means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
+        means = 1 - unique(means)
+        c_print(4, "\n=========MAB_INIT=========")
+        c_print(4, "MAB.py, Arm means: {}".format(means))
+        for mu in means:
+            delay = randint(3, self.maxDelay)
+            tmpArm = Bernoulli(mu, self.gamma, delay, self._approximate)
+            self.arms.append(tmpArm)
+            c_print(4, "MAB INIT: Created arm: {}".format(tmpArm))
+        return len(means)
+
+
+    def _r_star_computation(self):
+        avgs = [self._avg(i) for i in  np.arange(1,len(self.arms),1)]
+        r_star = array(avgs).argmax()
+        c_print(4, "Obtained avgs: {}, r_star: {}".format(avgs, r_star))
+        return r_star
+
+
+    def _avg(self, r):
+        c_print(1, r)
+        delayed_means = [arm.computeState(r) for arm in self.arms]
+        c_print(1, "First {} arm means: {}".format(r, delayed_means[:r]))
+        partial_sum = sum(delayed_means[:r])
+        avg = partial_sum / (r)
+        c_print(1, "Partial Sum {}, Average {}. over {} arms".format(partial_sum, avg, r))
+        return avg
+

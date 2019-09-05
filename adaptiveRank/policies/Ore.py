@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class ORE2(Policy):
     '''Ordering and Rank Estimation via Elimination'''
 
-    def __init__(self, T, tau, delta = 0.1, rounding = 5, MOD = 2, approximate = False):
+    def __init__(self, T, tau, delta = 0.1, shrink = 10, rounding = 5, MOD = 2, approximate = False):
         c_print(4, "\nORE2 Init. Tau {}, delta {}".format(tau, delta))
         # Non-stationarity parameters
         self._tau = tau
@@ -21,6 +21,7 @@ class ORE2(Policy):
         # Running parameters
         self.horizon = T # horizon
         self.delta = delta # confidence
+        self._shrink = shrink
         self._rounding = rounding # rounding approximation
         self.MOD = MOD
         self.APP = approximate
@@ -76,7 +77,7 @@ class ORE2(Policy):
             jump_rank = list()
             # Stage 1: Sampling all active arms
             self._freezedTime = self._t
-            nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks))), 1)
+            nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks) * self._shrink)), 1)
             c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
             c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
             c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
@@ -184,7 +185,7 @@ class ORE2(Policy):
                     return True
             if i == len_activeArms - 1:
                 if gap_l < current_cb and not self._JUMP_ARMORDERING:
-                    c_print(1, "ORE.py, NOT ORDERED(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
+                    c_print(1, "ORE.py, NOT ORDERED(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_l, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
                     return True
             if i!= len_activeArms - 1 and i!= 0 and not self._JUMP_ARMORDERING:
                 if gap_l < current_cb or gap_r < current_cb:
@@ -192,7 +193,7 @@ class ORE2(Policy):
                     return True
 
         # All arms are Separeted
-        if not self._learnedPO :
+        if not self._learnedPO:
             if self._JUMP_ARMORDERING:
                 self._meanArms = [1.0, 0.945970, 0.89811, 0.862933, 0.68627, 0.46153, 0.0]
             sorted_idx = argsort(self._meanArms)[::-1]
@@ -235,9 +236,9 @@ class ORE2(Policy):
             if i == len_activeArms - 1:
                 if gap_l > current_cb and sorted_idx[i] in self._activeArms: # Discarding the last index
                     arm_deletion = True
-                    c_print(4, "\nORE.py, DISCARDING(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
+                    c_print(4, "\nORE.py, DISCARDING(): Gap_Left {} vs CB {}, last arm index: {}, activeArms {} sorted_idx {} means {}".format(gap_l, current_cb, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
             if i!= len_activeArms - 1 and i!= 0:
-                if gap_l > current_cb and gap_r > current_cb and sorted_idx[i] in self._activeArms: # Discarding a in the middle index
+                if gap_l > current_cb and gap_r > current_cb and sorted_idx[i] in self._activeArms: # Discarding an index in the middle
                     arm_deletion = True
                     c_print(4, "\nORE.py, DISCARDING(): Gap_Right {} Gap_Left {} vs CB {}, arm {} with Index: {}, activeArms {} sorted_idx {} means {}".format(gap_r, gap_l, current_cb, i, sorted_idx[i], self._activeArms, sorted_idx, self._meanArms))
 

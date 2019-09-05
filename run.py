@@ -44,7 +44,6 @@ MAX_DELAY = opts.MAX_DELAY
 DELTA = opts.DELTA
 TAU = opts.TAU
 FRA_TOP = opts.FRA_TOP
-#DELAY_UB = opts.DELAY_UB + MAX_DELAY
 HORIZON = opts.T
 N_BUCKETS = opts.N_BUCKETS
 N_REPETITIONS = opts.N_REP
@@ -56,11 +55,14 @@ BINARY = opts.BINARY # Binary rewards
 #=====================
 # INITIALIZATION 
 #===================== 
-policies = [RStar(HORIZON, 2), UCB(HORIZON, 2)] 
+policies = [RStar(HORIZON, 2), UCB(HORIZON, 2)]
 policies_name = ['Ghost', 'UCB1']
+# Appending an additional benchmark
+policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY))
+policies_name.append('PI ucb')
 # Appending our lerning policy
-policies.append(ORE2(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY))
-policies_name.append('Low Ranker')
+policies.append(ORE2(HORIZON, TAU, DELTA, 50, ROUNDING, 5, BINARY))
+policies_name.append('PI Low')
 
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
 N_POLICIES = len(policies_name)
