@@ -78,9 +78,9 @@ class ORE2(Policy):
             # Stage 1: Sampling all active arms
             self._freezedTime = self._t
             nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks) * self._shrink)), 1)
-            c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
+            c_print(1, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
             c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
-            c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+            c_print(1, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
                 # Additional variables for updating with non-stationarities
@@ -98,7 +98,8 @@ class ORE2(Policy):
                 c_print(1, "ORE.py, CHOICE final list for rank {}: {}".format(rank_id, index))
             # Stage 2: Rank Elimination
             self._r = self._r + 1
-            self._rankElimination()
+            if len(self._activeRanks) > 1:
+                self._rankElimination()
             self._jump_list = jump_list
             self._jump_rank = jump_rank
             return index
@@ -118,11 +119,12 @@ class ORE2(Policy):
         max_rank_id = argmax(self._meanRanks)
         for rank_id in self._activeRanks:
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
-            # Rank Elimination
+            # Rank Elimination: eliminating up to 1 rank per round
             if ranks_gap > self._cb():
                 c_print(4,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
+                return
         return 
 
 

@@ -130,7 +130,7 @@ class MAB(Environment):
     def _r_star_computation(self):
         avgs = [self._avg(i) for i in  np.arange(1,len(self.arms),1)]
         r_star = array(avgs).argmax()
-        c_print(4, "Obtained avgs: {}, r_star: {}".format(avgs, r_star))
+        c_print(4, "MAB.py, ARM CREATION Obtained avgs: {}, r_star: {}".format(avgs, r_star))
         return r_star
 
 
