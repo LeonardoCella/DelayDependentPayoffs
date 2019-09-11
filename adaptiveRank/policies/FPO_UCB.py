@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class FPO_UCB(Policy):
     '''FastPartialOrder and MaxRank'''
 
-    def __init__(self, T, tau, delta = 0.1, rounding = 5, MOD = 2, approximate = False):
+    def __init__(self, T, tau, delta = 0.1, rounding = 5, MOD = 2, approximate = False, lp = 0):
         c_print(4, "\nFPO_UCB Init. Tau {}, delta {}".format(tau, delta))
         # Non-stationarity parameters
         self._nArms = 0
@@ -26,6 +26,7 @@ class FPO_UCB(Policy):
         self._horizon = T
         self._rounding = rounding
         self._MOD = MOD
+        self._LP = lp # 0 full, 1 arm ordering, 2 rank estimation
         self._APP = approximate
 
         # Policy "state"
@@ -34,22 +35,32 @@ class FPO_UCB(Policy):
         self._nbPullsRanks = []
         self._learnedPO = False
 
+    def setArmMeans(self, means):
+        assert self._MOD != 1, "FPO.py() setting Means in a wrong modality"
+        self._meanArms = means
+        return
+
+
     def choice(self, arms):
-        if self._t == 0: # Data Structures initialization
+        if self._t == 0: # Data Structures INITIALIZATION
             self._nArms = len(arms)
             self._activeArms = [i for i in range(self._nArms)]
             self._ranks = [i+1 for i in range(self._nArms)]
             self._nbPullsArms = [0] * self._nArms
             self._nbPullsRanks = [0] * self._nArms
             self._cumRwdArms = [0.0] * self._nArms
-            self._meanArms = [0.0] * self._nArms
             self._cumRwdArmDelay = zeros((self._nArms, self._nArms + 1))
             self._nbPullsArmDelay = zeros((self._nArms, self._nArms + 1))
 
-            # Each arm is played once 
-            idx = self._bucketing(self._activeArms)
-            c_print(4, "FPO.py, choice(): First Pull, round {}, pulling {}".format(self._t, idx))
-            return idx
+            if self._LP == 2: # Rank Estimation Only
+                c_print(4, "FPO.py(), JUMPING LEARNING ARM ORDERING: {}".format(self._meanArms))
+                self._learnedPO = True
+            else:
+                self._meanArms = [0.0] * self._nArms
+                # Each arm is played once 
+                idx = self._bucketing(self._activeArms)
+                c_print(4, "FPO.py, choice(): First Pull, round {}, pulling {}".format(self._t, idx))
+                return idx
 
         # Arm Elimination 
         if not self._learnedPO and self._samplingRequired():
@@ -63,6 +74,7 @@ class FPO_UCB(Policy):
             index.extend(index)
             c_print(1, "FPO.py, choice(): round {} Max_Rank {}\n".format(self._t, index))
             return index
+
 
     def _discarded(self):
         for i in range(self._nArms - 1):
@@ -184,6 +196,11 @@ class FPO_UCB(Policy):
                 self._cumRwdArmDelay[arm, self._pulledRankIndex] += rwd
 
                 self._nbPullsArmDelay[arm, self._pulledRankIndex] += 1
+        return
+
+    def overwriteArmMeans(self, means):
+        assert self._LP == 2, "FPO.py, OVERWRITING ARM MEANS IN WRONG MOD"
+        self._meanArms = means
         return
 
     def _bucketing(self, indexes):

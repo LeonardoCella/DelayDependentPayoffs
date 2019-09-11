@@ -13,8 +13,8 @@ from adaptiveRank.tools.io import c_print
 class ORE2(Policy):
     '''Ordering and Rank Estimation via Elimination'''
 
-    def __init__(self, T, tau, delta = 0.1, shrink = 10, rounding = 5, MOD = 2, approximate = False):
-        c_print(4, "\nORE2 Init. Tau {}, delta {}".format(tau, delta))
+    def __init__(self, T, tau, delta = 0.1, shrink = 10, rounding = 5, MOD = 2, approximate = False, lp = 0):
+        c_print(4, "\nORE2 Init. Tau {}, delta {}, LP {}".format(tau, delta, lp))
         # Non-stationarity parameters
         self._tau = tau
 
@@ -25,7 +25,7 @@ class ORE2(Policy):
         self._rounding = rounding # rounding approximation
         self.MOD = MOD
         self.APP = approximate
-        self._JUMP_ARMORDERING = False # TESTING RANK ELIMINATION ONLY
+        self.LP = lp
 
         # Policy "state"
         self._t = 0 # round iterator, necessary for filtering biased rewards
@@ -52,15 +52,24 @@ class ORE2(Policy):
             self._cumRwdArmDelay = zeros((self._nArms, self._nArms))
             self._nbPullsArmDelay = zeros((self._nArms, self._nArms))
             self._cumRwdRanks = [0.0] * self._nArms
-            self._meanArms = [0.0] * self._nArms
             self._meanRanks = [0.0] * self._nArms
 
-            # Each arm is played once 
-            idx = self._bucketing(self._activeArms)
-            c_print(self.MOD, "PO.py, CHOICE(): First Pull, round {}, pulling {}".format(self._t, idx))
-            self._r = self._r + 1
-            assert self._r == 1, "Wrong sampling counter definition"
-            return idx
+            # Rank Estimation Problem
+            if self.LP == 2:
+                self._learnedPO = True
+                sorted_idx = argsort(self._meanArms)[::-1]
+                # Variable setting for the next phase
+                self._r = 1
+                self._s = 0
+                self._activeArms = sorted_idx
+            else:
+                self._meanArms = [0.0] * self._nArms
+                # Each arm is played once 
+                idx = self._bucketing(self._activeArms)
+                c_print(self.MOD, "PO.py, CHOICE(): First Pull, round {}, pulling {}".format(self._t, idx))
+                self._r = self._r + 1
+                assert self._r == 1, "Wrong sampling counter definition"
+                return idx
 
         # Arm Elimination
         if not self._learnedPO and self._samplingRequired():
@@ -77,7 +86,8 @@ class ORE2(Policy):
             jump_rank = list()
             # Stage 1: Sampling all active arms
             self._freezedTime = self._t
-            nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks) * self._shrink)), 1)
+            nbAppends = max(int(self._Ts() / (self._r * len(self._activeRanks) * self._shrink)), 2)
+
             c_print(1, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
             c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
             c_print(1, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
@@ -121,7 +131,7 @@ class ORE2(Policy):
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
             # Rank Elimination: eliminating up to 1 rank per round
             if ranks_gap > self._cb():
-                c_print(4,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
+                c_print(1,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
                 return
@@ -144,7 +154,7 @@ class ORE2(Policy):
             # Windows of acceptance
             if self._jump_list[time_gap]:
                 pulledRankIndex = self._jump_rank[time_gap]
-                c_print(1, "Storing Arm {} delay {}".format(arm, delay))
+                c_print(1, "Storing rwd {} for Arm {} delay {}".format(rwd, arm, pulledRankIndex))
                 self._cumRwdArmDelay[arm, pulledRankIndex] += rwd
                 self._nbPullsArmDelay[arm, pulledRankIndex] += 1
         return
@@ -196,8 +206,6 @@ class ORE2(Policy):
 
         # All arms are Separeted
         if not self._learnedPO:
-            if self._JUMP_ARMORDERING:
-                self._meanArms = [1.0, 0.945970, 0.89811, 0.862933, 0.68627, 0.46153, 0.0]
             sorted_idx = argsort(self._meanArms)[::-1]
             c_print(4, "\n===LEARNED ARM ORDERING\nORE.py, ORDERED(): Learned partial order. Active arms {}, sorted {}, means {}".format(self._activeArms, sorted_idx, self._meanArms))
             # Variable setting for the next phase
@@ -250,6 +258,11 @@ class ORE2(Policy):
                 return 
         return
 
+
+    def overwriteArmMeans(self, means):
+        assert self.LP == 2, "ORE.py, OVERWRITING ARM MEANS IN WRONG MOD"
+        self._meanArms = means
+        return
 
     def _bucketing(self, indexes):
         returned_list = []

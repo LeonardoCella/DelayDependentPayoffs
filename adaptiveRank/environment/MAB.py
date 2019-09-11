@@ -15,15 +15,17 @@ import sortednp as snp
 class MAB(Environment):
     """Multi-armed bandit problem with arms given in the 'arms' list"""
 
-    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate, policy_name):
+    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate, modality, policy_name):
         self.horizon = horizon
         self.nbBuckets = nbBuckets
         self.gamma = gamma
         self.fraTop = fraTop
         self.maxDelay = maxDelay
         self._approximate = approximate # Specifies whether to use binary rewards or not
+        self._modality = modality # Specifies the learning problem: 0 full, 1 arm ordering, 2 rank estimation
         self.policy_name = policy_name
         self.arms = [] # List of Bernoulli objects
+        self._meanArms = []
         self.nbArms = 0
         self.r_star = 0
 
@@ -58,6 +60,11 @@ class MAB(Environment):
         self.r_star = self._r_star_computation()
 
         result.setNbArms(self.nbArms)
+
+        # Learning Modality Message Passing
+        if self._modality == 2: # Rank Estimation 
+            if self.policy_name in ['PI Low', 'PI ucb']:
+                policy.overwriteArmMeans(self._meanArms)
 
         while t < horizon:
             c_print(1, "\n===\nMAB.py, play(): round {}\n===".format(t))
@@ -117,6 +124,7 @@ class MAB(Environment):
         c_print(1, "Good arms: {}".format(good_arms))
         means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
         means = 1 - unique(means)
+        self._meanArms = means
         c_print(4, "\n=========MAB_INIT=========")
         c_print(4, "MAB.py, Arm means: {}".format(means))
         for mu in means:
