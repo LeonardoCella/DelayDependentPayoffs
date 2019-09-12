@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class FPO_UCB(Policy):
     '''FastPartialOrder and MaxRank'''
 
-    def __init__(self, T, tau, delta = 0.1, rounding = 5, MOD = 2, approximate = False, lp = 0):
+    def __init__(self, T, tau, delta = 0.1, rounding = 5, MOD = 2, approximate = False, lp = 0, alpha = 1):
         c_print(4, "\nFPO_UCB Init. Tau {}, delta {}".format(tau, delta))
         # Non-stationarity parameters
         self._nArms = 0
@@ -24,12 +24,14 @@ class FPO_UCB(Policy):
         self._s = 0 # phase iterator
         self._delta = delta
         self._horizon = T
+        self._alpha = alpha
         self._rounding = rounding
         self._MOD = MOD
         self._LP = lp # 0 full, 1 arm ordering, 2 rank estimation
         self._APP = approximate
 
         # Policy "state"
+        self._meanArms = []
         self._activeArms = [] # mean ascending sorted arm indexes
         self._ranks = [] # ranks identifiers
         self._nbPullsRanks = []
@@ -38,6 +40,7 @@ class FPO_UCB(Policy):
     def setArmMeans(self, means):
         assert self._MOD != 1, "FPO.py() setting Means in a wrong modality"
         self._meanArms = means
+        c_print(4, "FPO.py, Setting Arm Means {}".format(self._meanArms))
         return
 
 
@@ -53,7 +56,7 @@ class FPO_UCB(Policy):
             self._nbPullsArmDelay = zeros((self._nArms, self._nArms + 1))
 
             if self._LP == 2: # Rank Estimation Only
-                c_print(4, "FPO.py(), JUMPING LEARNING ARM ORDERING: {}".format(self._meanArms))
+                c_print(4, "FPO.py, JUMPING LEARNING ARM ORDERING: {}".format(self._meanArms))
                 self._learnedPO = True
             else:
                 self._meanArms = [0.0] * self._nArms
@@ -166,7 +169,7 @@ class FPO_UCB(Policy):
                 mean_rank = 0.0
                 # For the first rank-arms
                 for i in self._activeArms[:(rank+1)]:
-                    tmp = self._cumRwdArmDelay[i,rank] / self._nbPullsArmDelay[i,rank]
+                    tmp = self._alpha * self._cumRwdArmDelay[i,rank] / self._nbPullsArmDelay[i,rank]
                     mean_rank = mean_rank + tmp
                 ucb_values[rank] = mean_rank /(1+rank) + sqrt((2*log(self._t))/self._nbPullsRanks[rank])
             index = argmax(ucb_values)

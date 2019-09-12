@@ -63,7 +63,7 @@ class MAB(Environment):
 
         # Learning Modality Message Passing
         if self._modality == 2: # Rank Estimation 
-            if self.policy_name in ['PI Low', 'PI ucb']:
+            if self.policy_name in ['PI Low', 'PI ucb', 'PI ucb 1', 'PI ucb 10', 'PI ucb 50']:
                 policy.overwriteArmMeans(self._meanArms)
 
         while t < horizon:

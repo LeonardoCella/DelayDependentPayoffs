@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class ORE2(Policy):
     '''Ordering and Rank Estimation via Elimination'''
 
-    def __init__(self, T, tau, delta = 0.1, shrink = 10, rounding = 5, MOD = 2, approximate = False, lp = 0):
+    def __init__(self, T, tau, delta = 0.1, shrink = 100, rounding = 5, MOD = 2, approximate = False, lp = 0):
         c_print(4, "\nORE2 Init. Tau {}, delta {}, LP {}".format(tau, delta, lp))
         # Non-stationarity parameters
         self._tau = tau
@@ -31,6 +31,7 @@ class ORE2(Policy):
         self._t = 0 # round iterator, necessary for filtering biased rewards
         self._r = 0 # stage iterator in terms of rounds
         self._s = 0 # stage iterator in terms of elimination
+
         # Policy "state": RANKS Data Structures
         self._activeArms = [] # mean ascending sorted arm indexes
         self._activeRanks = [] # rank indexes
@@ -56,6 +57,7 @@ class ORE2(Policy):
 
             # Rank Estimation Problem
             if self.LP == 2:
+                c_print(4, "ORE.py, JUMPING ARM ORDERING ESTIMATION, given means {}".format(self._meanArms))
                 self._learnedPO = True
                 sorted_idx = argsort(self._meanArms)[::-1]
                 # Variable setting for the next phase
@@ -66,7 +68,7 @@ class ORE2(Policy):
                 self._meanArms = [0.0] * self._nArms
                 # Each arm is played once 
                 idx = self._bucketing(self._activeArms)
-                c_print(self.MOD, "PO.py, CHOICE(): First Pull, round {}, pulling {}".format(self._t, idx))
+                c_print(self.MOD, "ORE.py, CHOICE(): First Pull, round {}, pulling {}".format(self._t, idx))
                 self._r = self._r + 1
                 assert self._r == 1, "Wrong sampling counter definition"
                 return idx
@@ -134,6 +136,8 @@ class ORE2(Policy):
                 c_print(1,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
+                if len(self._activeRanks) == 1:
+                    c_print(4, "RANK Elimination(), LEARNED RANK {}".format(self._activeRanks[0]))
                 return
         return 
 
@@ -262,6 +266,7 @@ class ORE2(Policy):
     def overwriteArmMeans(self, means):
         assert self.LP == 2, "ORE.py, OVERWRITING ARM MEANS IN WRONG MOD"
         self._meanArms = means
+        c_print(4, "Setting Arm Means {}".format(means))
         return
 
     def _bucketing(self, indexes):

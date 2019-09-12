@@ -24,11 +24,11 @@ import matplotlib
 parser = OptionParser(usage="usage: %prog [options]",
         version="%prog 1.0")
 parser.add_option('--gamma', dest = 'GAMMA', default = 0.999, type = "float", help = "Discount parameter")
-parser.add_option('--max_delay', dest = 'MAX_DELAY', default = 4, type = "int", help = "Memory size for the discount")
-parser.add_option('--tau', dest = 'TAU', default = '5', type = 'int', help = 'Sampling delay')
+parser.add_option('--max_delay', dest = 'MAX_DELAY', default = 6, type = "int", help = "Memory size for the discount")
+parser.add_option('--tau', dest = 'TAU', default = '7', type = 'int', help = 'Sampling delay')
 parser.add_option('-T', dest = 'T', default = 500000, type = "int", help = "Time horizon")
-parser.add_option('-k', dest = 'N_BUCKETS', default = 4, type = "int", help = "Number of buckets")
-parser.add_option('--fra_top', dest = 'FRA_TOP', default = 0.1, type = "float", help = "Fraction of top arms")
+parser.add_option('-k', dest = 'N_BUCKETS', default = 8, type = "int", help = "Number of buckets")
+parser.add_option('--fra_top', dest = 'FRA_TOP', default = 0.2, type = "float", help = "Fraction of top arms")
 #parser.add_option('--delay_ub', dest = 'DELAY_UB', default = 2, type = "int", help = "Gap from the delay bar")
 parser.add_option('--delta', dest = "DELTA", default = 0.1, type = "float", help = "confidence in estimates")
 parser.add_option('--n_rep', dest = 'N_REP', default = 1, type = "int", help = "Number of repetitions")
@@ -65,9 +65,8 @@ else:
     policies_name = []
 
 # Appending an additional benchmark
-policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD))
+policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, 10))
 policies_name.append('PI ucb')
-# Appending our lerning policy
 policies.append(ORE2(HORIZON, TAU, DELTA, 50, ROUNDING, 5, BINARY, MOD))
 policies_name.append('PI Low')
 
@@ -91,8 +90,8 @@ for i,p in enumerate(policies):
 # PLOTTING RESULTS
 #=====================
 if opts.VERBOSE:
-    COLORS = ['b', 'g', 'r', 'y']
-    MARKERS = ['o', '+', 'x', 'v']
+    COLORS = ['b', 'g', 'r', 'y', 'k', 'c', 'm']
+    MARKERS = ['o', '+', 'x', 'v', 'o', '+', 'x']
     POLICY_AVGS = []
     POLICY_STD = []
     POLICY_N = []
