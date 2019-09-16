@@ -37,6 +37,7 @@ parser.add_option('--bin', dest = 'BINARY', default = 1, type = "int", help = "B
 parser.add_option('-v', dest = 'VERBOSE', default = '1', type = 'int', help = "Verbose in terms of plots")
 parser.add_option('-s', dest = 'STORE', default = '1', type = 'int', help = "Storing plots")
 parser.add_option('--stage', dest = 'MOD', default = '0', type = 'int', help = "0 - full learning, 1 arm ordering, 2 rank estimation")
+parser.add_option('--test', dest = 'TEST', default = '0', type = 'int', help = "testing with specified means")
 (opts, args) = parser.parse_args()
 
 # Parsing parameters
@@ -53,13 +54,14 @@ VERBOSE = opts.VERBOSE
 STORE = opts.STORE
 BINARY = opts.BINARY # Binary rewards
 MOD = opts.MOD # Running modality
+TEST = opts.TEST # Given arms
 
 #=====================
 # INITIALIZATION 
 #===================== 
 if MOD != 1: # Useless benchmarks for the arm ordering estimation problem
-    policies = [RStar(HORIZON, 2), UCB(HORIZON, 2)]
-    policies_name = ['Ghost', 'UCB1']
+    policies = [RStar(HORIZON, 2)]#, UCB(HORIZON, 2)]
+    policies_name = ['Ghost']#, 'UCB1']
 else:
     policies = []
     policies_name = []
@@ -79,7 +81,7 @@ cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))
 #=====================
 results = []
 for i,p in enumerate(policies):
-    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, BINARY, MOD, policies_name[i])
+    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, BINARY, MOD, policies_name[i], TEST)
     c_print(5, "=========RUN_POLICIES=========")
     c_print(5, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
     evaluation = Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS)
@@ -140,7 +142,7 @@ if opts.VERBOSE:
             # PI low plot
             plt.fill_between(arange(HORIZON), avg_regret_low - (std_regret_low/2), avg_regret_low + (std_regret_low/2), alpha = 0.5, color = COLORS[pilow_index])
             plt_fn(arange(HORIZON), avg_regret_low, color = COLORS[pilow_index], marker = MARKERS[pilow_index], markevery=HORIZON/100, label = 'Pi Low')
-            
+
             plt.legend(loc=2)
             plt.xlabel('Rounds')
             plt.ylabel('Regret')

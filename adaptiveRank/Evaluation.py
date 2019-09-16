@@ -41,6 +41,10 @@ class Evaluation:
             self.cumSumRwd[i] = result.getCumSumRwd()
             self.nbArms = result.getNbArms()
 
+        # Additional Result Visualization 
+        if len(repetitionIndex_results) == 1:
+            c_print(1, repr(repetitionIndex_results[0][1]))
+
         c_print(2, "EVALUATION: End iteration over {} repetitions for {}".format(nbRepetitions, policyName))
 
         # Averaged best Expectation

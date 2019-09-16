@@ -15,7 +15,7 @@ import sortednp as snp
 class MAB(Environment):
     """Multi-armed bandit problem with arms given in the 'arms' list"""
 
-    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate, modality, policy_name):
+    def __init__(self, horizon, nbBuckets, gamma, fraTop, maxDelay, approximate, modality, policy_name, TEST):
         self.horizon = horizon
         self.nbBuckets = nbBuckets
         self.gamma = gamma
@@ -28,6 +28,16 @@ class MAB(Environment):
         self._meanArms = []
         self.nbArms = 0
         self.r_star = 0
+
+        ### Test parameter
+        # r_bar = 5
+        self._TEST = TEST # Canary for given means
+        self._given_means = [0.95, 0.94, 0.93, 0.92, 0.91, 0.9, 0.89]
+        self._given_delaysLB = [2, 2, 3, 4, 5, 6, 1] # min delays 
+        self._given_delaysUB = [6, 6, 6, 6, 6, 6, 6] # Max delays
+        assert len(self._given_means) == len(self._given_delaysLB), "Incoherent arm specification"
+        self.nbArms = len(self._given_means)
+        self.horizon = 1000
 
 
     def compute_states(self):
@@ -55,7 +65,7 @@ class MAB(Environment):
         self._armsDelay = zeros(self.nbArms)
         self._armsIndexes = arange(self.nbArms)
         assert self._armsIndexes[-1] == self.nbArms -1, "Wrong arm creation"
-        c_print(4, "MAB.py, INIT: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
+        c_print(4, "MAB.py, play(), init: Arm Indexes {} Binary Rewards {}".format(self._armsIndexes, self._approximate))
         self._armsStates = zeros(self.nbArms) # Expected rewards of each arm according to suffered delays
         self.r_star = self._r_star_computation()
 
@@ -115,39 +125,48 @@ class MAB(Environment):
 
 
     def _arm_creation(self, seed_init):
-        seed(seed_init)
-        starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
-        c_print(1, "Buckets: {}".format(starting_grid))
-        delta = 1.0/(self.nbBuckets) # Previously adopted delta
-        new_extreme = delta*self.fraTop*self.nbBuckets
-        good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
-        c_print(1, "Good arms: {}".format(good_arms))
-        means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
-        means = 1 - unique(means)
+        if self._TEST == False:
+            seed(seed_init)
+            starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
+            c_print(1, "Buckets: {}".format(starting_grid))
+            delta = 1.0/(self.nbBuckets) # Previously adopted delta
+            new_extreme = delta*self.fraTop*self.nbBuckets
+            good_arms = linspace(0.0, new_extreme, self.nbBuckets, endpoint = False)
+            c_print(1, "Good arms: {}".format(good_arms))
+            means = around(array(snp.merge(starting_grid, good_arms)), 2) # evenly round to 2 decimals 
+            means = 1 - unique(means)
+        else:
+            means = self._given_means
         self._meanArms = means
         c_print(4, "\n=========MAB_INIT=========")
-        c_print(4, "MAB.py, Arm means: {}".format(means))
-        for mu in means:
-            delay = randint(3, self.maxDelay)
-            tmpArm = Bernoulli(mu, self.gamma, delay, self._approximate)
+        c_print(4, "MAB.py, arm_creation(), Arm means: {}".format(means))
+        for i in range(len(means)):
+            mu = means[i]
+            if self._TEST == False:
+                delayLB = 1
+                delayUB = randint(3, self.maxDelay)
+            else:
+                delayLB = self._given_delaysLB[i]
+                delayUB = self._given_delaysUB[i]
+            tmpArm = Bernoulli(mu, self.gamma, delayLB, delayUB, self._approximate)
             self.arms.append(tmpArm)
-            c_print(4, "MAB INIT: Created arm: {}".format(tmpArm))
+            c_print(1, "MAB.py, arm_creation(), Created arm: {}".format(tmpArm))
         return len(means)
 
 
     def _r_star_computation(self):
-        avgs = [self._avg(i) for i in  np.arange(1,len(self.arms),1)]
+        avgs = [self._avg(i) for i in  np.arange(1,len(self.arms) + 1,1)]
         r_star = array(avgs).argmax()
-        c_print(4, "MAB.py, ARM CREATION Obtained avgs: {}, r_star: {}".format(avgs, r_star))
+        c_print(4, "MAB.py, r_star_comp(), Obtained avgs: {}, r_star: {}".format(avgs, r_star))
         return r_star
 
 
     def _avg(self, r):
-        c_print(1, r)
-        delayed_means = [arm.computeState(r) for arm in self.arms]
-        c_print(1, "First {} arm means: {}".format(r, delayed_means[:r]))
+        c_print(1, "\nMAB.py, _avg(), Computing rank {}'s average".format(r))
+        delayed_means = [arm.computeState(r) for arm in self.arms[:r]]
+        c_print(1, "MAB.py, _avg(), First {} arm means: {}".format(r, delayed_means[:r]))
         partial_sum = sum(delayed_means[:r])
-        avg = partial_sum / (r)
-        c_print(1, "Partial Sum {}, Average {}. over {} arms".format(partial_sum, avg, r))
+        avg = around(partial_sum / r, 5)
+        c_print(1, "MAB.py, _avg(), Partial Sum {:f}, Average {:f}. over {} arms".format(partial_sum, avg, r))
         return avg
 
