@@ -32,12 +32,13 @@ class MAB(Environment):
         ### Test parameter
         # r_bar = 5
         self._TEST = TEST # Canary for given means
-        self._given_means = [0.95, 0.94, 0.93, 0.92, 0.91, 0.9, 0.89]
-        self._given_delaysLB = [2, 2, 3, 4, 5, 6, 1] # min delays 
-        self._given_delaysUB = [6, 6, 6, 6, 6, 6, 6] # Max delays
+        self._given_means = [1, 0.25]
+        self._given_delaysLB = [1, 1] # min delays 
+        self._given_delaysUB = [5, 5] # max delays
+        self._given_gamma = 0.6 # specific gamma value
         assert len(self._given_means) == len(self._given_delaysLB), "Incoherent arm specification"
         self.nbArms = len(self._given_means)
-        self.horizon = 1000
+        self.horizon = 100000
 
 
     def compute_states(self):
@@ -145,10 +146,12 @@ class MAB(Environment):
             if self._TEST == False:
                 delayLB = 1
                 delayUB = randint(3, self.maxDelay)
+                gamma = self.gamma
             else:
                 delayLB = self._given_delaysLB[i]
                 delayUB = self._given_delaysUB[i]
-            tmpArm = Bernoulli(mu, self.gamma, delayLB, delayUB, self._approximate)
+                gamma = self._given_gamma
+            tmpArm = Bernoulli(mu, gamma, delayLB, delayUB, self._approximate)
             self.arms.append(tmpArm)
             c_print(1, "MAB.py, arm_creation(), Created arm: {}".format(tmpArm))
         return len(means)

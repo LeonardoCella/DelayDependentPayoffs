@@ -21,8 +21,6 @@ class Bernoulli(Arm):
         self._maxDelay = maxDelay
         self._approximate = approximate
 
-        # Random seed specificiation
-        rnd.seed(1)
 
     def __str__(self):
         return "Bernoulli arm. mu: {} gamma: {} min_delay {}: max_delay: {}".format(self._mean, self._gamma, self._minDelay, self._maxDelay)
@@ -35,7 +33,7 @@ class Bernoulli(Arm):
         if self._approximate == 0:
             return expectedReward
         else:
-            return bernoulli.rvs(expectedReward)
+            return bernoulli.rvs(expectedReward, random_state = 1)
 
     def computeState(self, currentDelay):
         expectedReward = self._mean

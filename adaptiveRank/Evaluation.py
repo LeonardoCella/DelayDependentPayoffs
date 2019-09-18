@@ -7,6 +7,9 @@ import numpy as np
 from adaptiveRank.tools.io import c_print
 from joblib import Parallel, delayed
 
+import sys
+sys.maxsize = 1000000 # Avoid truncations in print
+
 def parallel_repetitions(evaluation, policy, horizon, i):
     c_print(2, "EVALUATION: parallel_repetition index {}, T: {}".format(i+1, horizon))
     result = evaluation.environment.play(policy, horizon, i)
@@ -43,7 +46,7 @@ class Evaluation:
 
         # Additional Result Visualization 
         if len(repetitionIndex_results) == 1:
-            c_print(1, repr(repetitionIndex_results[0][1]))
+            c_print(4, repr(repetitionIndex_results[0][1]))
 
         c_print(2, "EVALUATION: End iteration over {} repetitions for {}".format(nbRepetitions, policyName))
 

@@ -17,6 +17,8 @@ from numpy import mean, std, zeros, arange, where
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import matplotlib
+import sys
+sys.maxsize = 1000000 # Avoid truncations in print
 
 #====================
 # RUNNING PARAMETERS

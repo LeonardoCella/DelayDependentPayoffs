@@ -92,9 +92,9 @@ class ORE2(Policy):
 
             # Output
             if len(self._activeRanks) > 1:
-                c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
+                c_print(1, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
                 c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
-                c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+                c_print(1, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
 
             # Playing all active ranks Ts + 1 times.
             for rank_id in self._activeRanks:
@@ -185,7 +185,7 @@ class ORE2(Policy):
 
 
     def _Ts(self):
-        return int((10) ** (1 - 2**(-self._r)))
+        return int((1000) ** (1 - 2**(-self._r)))
 
 
     def _times(self):

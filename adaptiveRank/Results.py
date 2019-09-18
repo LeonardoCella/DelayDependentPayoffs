@@ -2,6 +2,8 @@
 
 import numpy as np
 from adaptiveRank.tools.io import c_print
+import sys
+sys.maxsize = 1000000 # Avoid truncations in print
 
 
 class Result:
