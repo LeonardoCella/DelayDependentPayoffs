@@ -46,7 +46,7 @@ class Evaluation:
 
         # Additional Result Visualization 
         if len(repetitionIndex_results) == 1:
-            c_print(4, repr(repetitionIndex_results[0][1]))
+            c_print(1,"Evaluation.py\n{}".format(repr(repetitionIndex_results[0][1])))
 
         c_print(2, "EVALUATION: End iteration over {} repetitions for {}".format(nbRepetitions, policyName))
 

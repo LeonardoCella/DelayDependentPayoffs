@@ -6,7 +6,7 @@ class Arm:
     def __init__(self, mean, gamma, maxDelay):
         pass
 
-    def draw(self, currentDelay):
+    def draw(self, currentDelay, repIndex):
         pass
 
     def computeState(self, currentDelay):

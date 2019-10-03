@@ -13,7 +13,7 @@ from adaptiveRank.tools.io import c_print
 class ORE2(Policy):
     '''Ordering and Rank Estimation via Elimination'''
 
-    def __init__(self, T, tau, delta = 0.1, shrink = 100, rounding = 5, MOD = 2, approximate = False, lp = 0):
+    def __init__(self, T, tau, delta = 0.1, shrink = 1, rounding = 5, MOD = 2, approximate = False, lp = 0):
         c_print(4, "\nORE2 Init. Tau {}, delta {}, LP {}".format(tau, delta, lp))
         # Non-stationarity parameters
         self._tau = tau
@@ -57,9 +57,9 @@ class ORE2(Policy):
 
             # Rank Estimation Problem
             if self.LP == 2:
-                c_print(4, "ORE.py, JUMPING ARM ORDERING ESTIMATION, given means {}".format(self._meanArms))
                 self._learnedPO = True
                 sorted_idx = argsort(self._meanArms)[::-1]
+                c_print(4, "ORE.py, JUMPING ARM ORDERING ESTIMATION, given means {} sorted indexes {}".format(self._meanArms, sorted_idx))
                 # Variable setting for the next phase
                 self._r = 1
                 self._s = 0
@@ -75,7 +75,7 @@ class ORE2(Policy):
 
         # Arm Elimination
         if not self._learnedPO and self._samplingRequired():
-            c_print(4, "PO.py, not ordered DISCARDING on active arms {}".format(self._activeArms))
+            c_print(1, "PO.py, not ordered DISCARDING on active arms {}".format(self._activeArms))
             self._discarded() # it discards at most a single arm
             idx = self._bucketing(self._activeArms)
             self._r = self._r + 1
@@ -92,33 +92,37 @@ class ORE2(Policy):
 
             # Output
             if len(self._activeRanks) > 1:
-                c_print(1, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
-                c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsArmDelay))
-                c_print(1, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+                c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
+                c_print(4, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsRanks))
+                c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
 
-            # Playing all active ranks Ts + 1 times.
-            for rank_id in self._activeRanks:
-                # Additional variables for updating with non-stationarities
-                self._pulledRankIndex = rank_id
-                # List extension: calibration + Ts
-                c_print(1, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
-                tmp_index = list(self._activeArms[:rank_id+1])
-                jump_list += [0] * (rank_id+1)
+            # Playing the less played rank among the active ones
+            active_ranks_pulls = [self._nbPullsRanks[i] for i in self._activeRanks]
+            rank_id = self._activeRanks[active_ranks_pulls.index(min(active_ranks_pulls))]
+            # Additional variables for updating with non-stationarities
+            self._pulledRankIndex = rank_id
+            self._nbPullsRanks[rank_id] += 1
+            # List extension: calibration + Ts
+            c_print(4, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
+            tmp_index = list(self._activeArms[:rank_id+1])
+            jump_list += [0] * (rank_id+1)
+            jump_rank += [rank_id] * (rank_id+1)
+            index += tmp_index # Rank Calibration
+            for _ in range(nbAppends): # Effective pulls
+                index += tmp_index
                 jump_rank += [rank_id] * (rank_id+1)
-                index += tmp_index # Rank Calibration
-                for _ in range(nbAppends): # Effective pulls
-                    index += tmp_index
-                    jump_rank += [rank_id] * (rank_id+1)
-                    jump_list += [1] * (rank_id+1)
-                c_print(1, "ORE.py, CHOICE final list for rank {} with {} appends: {}".format(rank_id, nbAppends, index))
+                jump_list += [1] * (rank_id+1)
 
-            # The first time there is no rank elimination
-            if self._t == 0:
+            c_print(4, "ORE.py, CHOICE rank_id: {} with {} appends, active ranks pulls {}".format(rank_id, nbAppends, active_ranks_pulls))
+
+            # NO RANK ELIMINATION at first round or within a window of active ranks pulls
+            if self._t == 0 or min(active_ranks_pulls)!= max(active_ranks_pulls):
                 self._jump_list = jump_list
                 self._jump_rank = jump_rank
                 return index
 
             # Stage 2: Rank Elimination
+            c_print(4, "ORE.py Start Rank Elimination with {} active ranks".format(len(self._activeRanks)))
             self._r = self._r + 1
             if len(self._activeRanks) > 1:
                 self._rankElimination()
@@ -185,7 +189,7 @@ class ORE2(Policy):
 
 
     def _Ts(self):
-        return int((1000) ** (1 - 2**(-self._r)))
+        return int((self.horizon) ** (1 - 2**(-self._r)))
 
 
     def _times(self):

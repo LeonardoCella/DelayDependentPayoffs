@@ -25,15 +25,12 @@ class Bernoulli(Arm):
     def __str__(self):
         return "Bernoulli arm. mu: {} gamma: {} min_delay {}: max_delay: {}".format(self._mean, self._gamma, self._minDelay, self._maxDelay)
 
-    def draw(self, currentDelay):
+    def draw(self, currentDelay, rep_index):
         expectedReward = self._mean
         if currentDelay != 0 and currentDelay <= self._maxDelay and currentDelay >= self._minDelay:
             c_print(1, "Discounting")
             expectedReward *= (1 - self._gamma**currentDelay)
-        if self._approximate == 0:
-            return expectedReward
-        else:
-            return bernoulli.rvs(expectedReward, random_state = 1)
+        return (expectedReward, bernoulli.rvs(expectedReward, random_state = rep_index))
 
     def computeState(self, currentDelay):
         expectedReward = self._mean

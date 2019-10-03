@@ -186,7 +186,7 @@ class FPO_UCB(Policy):
             # Unbiased updates
             if delay == self._tau:
                 self._t = self._t + 1
-                c_print(1, "FPO.py, update(): unbiased sample")
+                c_print(4, "FPO.py, update(): unbiased sample")
                 self._cumRwdArms[arm] += rwd
                 self._nbPullsArms[arm] = self._nbPullsArms[arm] + 1
                 self._meanArms[arm] = self._cumRwdArms[arm]/self._nbPullsArms[arm]

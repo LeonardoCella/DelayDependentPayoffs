@@ -11,12 +11,17 @@ from adaptiveRank.policies.RStar import RStar
 from adaptiveRank.policies.Greedy import Greedy
 from adaptiveRank.policies.FPO_UCB import FPO_UCB
 from adaptiveRank.policies.Ore import ORE2
+from adaptiveRank.policies.One import One
+from adaptiveRank.policies.Alt import Alt
 
 from optparse import OptionParser
 from numpy import mean, std, zeros, arange, where
 from joblib import Parallel, delayed
-import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('text', usetex=True)
+import matplotlib.pyplot as plt
 import sys
 sys.maxsize = 1000000 # Avoid truncations in print
 
@@ -39,7 +44,8 @@ parser.add_option('--bin', dest = 'BINARY', default = 1, type = "int", help = "B
 parser.add_option('-v', dest = 'VERBOSE', default = '1', type = 'int', help = "Verbose in terms of plots")
 parser.add_option('-s', dest = 'STORE', default = '1', type = 'int', help = "Storing plots")
 parser.add_option('--stage', dest = 'MOD', default = '0', type = 'int', help = "0 - full learning, 1 arm ordering, 2 rank estimation")
-parser.add_option('--test', dest = 'TEST', default = '0', type = 'int', help = "testing with specified means")
+parser.add_option('--switch', dest = 'SWITCH', default = '0', type = 'int', help = "Testing with specified means")
+parser.add_option('--sc', dest = 'SC', default = '0', type = 'int', help = "With switching costs")
 (opts, args) = parser.parse_args()
 
 # Parsing parameters
@@ -56,7 +62,8 @@ VERBOSE = opts.VERBOSE
 STORE = opts.STORE
 BINARY = opts.BINARY # Binary rewards
 MOD = opts.MOD # Running modality
-TEST = opts.TEST # Given arms
+SWITCHING = opts.SWITCH # Given arms
+SC = opts.SC # With switching costs
 
 #=====================
 # INITIALIZATION 
@@ -68,10 +75,17 @@ else:
     policies = []
     policies_name = []
 
-# Appending an additional benchmark
-policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, 10))
+# Appending an additional benchmark to study the policy non-stationarity effect
+#if TEST == True:
+#    policies.append(One())
+#    policies_name.append('PI stationary')
+#    policies.append(Alt())
+#    policies_name.append('PI alternating')
+#else:
+policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, 100))
 policies_name.append('PI ucb')
-policies.append(ORE2(HORIZON, TAU, DELTA, 50, ROUNDING, 5, BINARY, MOD))
+shrink = 1
+policies.append(ORE2(HORIZON, TAU, DELTA, shrink, ROUNDING, 5, BINARY, MOD))
 policies_name.append('PI Low')
 
 assert len(policies) == len(policies_name), "Check consistency of policy naming"
@@ -83,7 +97,7 @@ cumSumRwd = zeros((N_POLICIES, N_REPETITIONS, HORIZON))
 #=====================
 results = []
 for i,p in enumerate(policies):
-    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, BINARY, MOD, policies_name[i], TEST)
+    mab = MAB(HORIZON, N_BUCKETS, GAMMA, FRA_TOP, MAX_DELAY, BINARY, MOD, policies_name[i], SWITCHING, SC)
     c_print(5, "=========RUN_POLICIES=========")
     c_print(5, "===Run.py, Run {}/{}. Policy: {}".format(i,len(policies_name)-1, policies_name[i]))
     evaluation = Evaluation(mab, p, HORIZON, policies_name[i], N_REPETITIONS)
@@ -101,7 +115,7 @@ if opts.VERBOSE:
     POLICY_N = []
     plt_fn =  plt.plot
     fig = plt.figure(1)
-    plt.title("Gamma: {}, Max Delay: {}, Arms: {}, Fraction Top-Arms: {}".format(GAMMA, MAX_DELAY, nbArms, FRA_TOP))
+    #plt.title("Gamma: {}, Max Delay: {}, Arms: {}, Fraction Top-Arms: {}".format(GAMMA, MAX_DELAY, nbArms, FRA_TOP))
     ax = fig.add_subplot(1,1,1)
     i = 0
     for name,avg,std in results:
@@ -109,15 +123,23 @@ if opts.VERBOSE:
         POLICY_STD.append(std)
         POLICY_N.append(name)
         plt.fill_between(arange(HORIZON), avg - (std/2), avg + (std/2), alpha = 0.5, color = COLORS[i])
-        plt_fn(arange(HORIZON), avg, color = COLORS[i], marker = MARKERS[i], markevery=HORIZON/100, label = name)
+        lbl = '$\displaystyle\pi_{ghost}$'
+        if name == 'PI Low':
+            lbl = '$\displaystyle\pi_{low}$'
+        if name == 'PI ucb':
+            lbl = '$\displaystyle\pi_{ucb}$'
+        plt_fn(arange(HORIZON), avg, color = COLORS[i], marker = MARKERS[i], markevery=HORIZON/100, label = lbl)
         i+=1
     plt.legend(loc=2)
-    plt.xlabel('Rounds')
-    plt.ylabel('Cumulative Reward')
+    #plt.xlabel('Rounds')
+    #plt.ylabel('Cumulative Reward')
     plt.grid()
     if STORE > 0:
         prefix = ['full', 'arm_ordering', 'rank_estimation']
-        plt.savefig("output/{}_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(prefix[MOD], GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
+        if SC:
+            plt.savefig("output/{}_SC_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(prefix[MOD], GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
+        else:
+            plt.savefig("output/{}_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(prefix[MOD], GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
 
         if MOD != 1: # Not Arm Ordering
             ghost_index = POLICY_N.index('Ghost')
@@ -134,20 +156,32 @@ if opts.VERBOSE:
             # Regret figure creation
             plt_fn = plt.plot
             fig = plt.figure()
-            plt.title("Regret wrt Ghost, Gamma {}, Arms {}, Fra. Top-Arms {}".format(GAMMA, MAX_DELAY, nbArms, FRA_TOP))
+            #plt.title("Regret wrt Ghost, Gamma {}, Max Delay {}, Fra. Top-Arms {}".format(GAMMA, MAX_DELAY, FRA_TOP))
             ax = fig.add_subplot(1,1,1)
 
             # PI UCB plot
             plt.fill_between(arange(HORIZON), avg_regret_ucb - (std_regret_ucb/2), avg_regret_ucb + (std_regret_ucb/2), alpha = 0.5, color = COLORS[piucb_index])
-            plt_fn(arange(HORIZON), avg_regret_ucb, color = COLORS[piucb_index], marker = MARKERS[piucb_index], markevery=HORIZON/100, label = 'Pi ucb')
+            plt_fn(arange(HORIZON), avg_regret_ucb, color = COLORS[piucb_index], marker = MARKERS[piucb_index], markevery=HORIZON/100, label = '$\displaystyle\pi_{ucb}$')
 
             # PI low plot
             plt.fill_between(arange(HORIZON), avg_regret_low - (std_regret_low/2), avg_regret_low + (std_regret_low/2), alpha = 0.5, color = COLORS[pilow_index])
-            plt_fn(arange(HORIZON), avg_regret_low, color = COLORS[pilow_index], marker = MARKERS[pilow_index], markevery=HORIZON/100, label = 'Pi Low')
+            plt_fn(arange(HORIZON), avg_regret_low, color = COLORS[pilow_index], marker = MARKERS[pilow_index], markevery=HORIZON/100, label = '$\displaystyle\pi_{low}$')
+
 
             plt.legend(loc=2)
-            plt.xlabel('Rounds')
-            plt.ylabel('Regret')
+            #plt.xlabel('Rounds')
+            #plt.ylabel('Regret')
+            plt.tight_layout()
             plt.grid()
             ax.set_xscale('log')
-            plt.savefig("output/regret_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
+
+            if SC:
+                if SWITCHING:
+                    plt.savefig("output/regret_SWITCHING_SC_bin{}_T{}.png".format(BINARY, HORIZON))
+                else:
+                    plt.savefig("output/regret_SC_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
+            else:
+                if SWITCHING:
+                    plt.savefig("output/regret_SWITCHING_NOSC_bin{}_T{}".format(BINARY, HORIZON))
+                else:
+                    plt.savefig("output/regret_NOSC_g{}_ft{}_d{}_dUB{}_dBar{}_bin{}_T{}_k{}.png".format(GAMMA, FRA_TOP, DELTA, MAX_DELAY, TAU, BINARY, HORIZON, N_BUCKETS))
