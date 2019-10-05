@@ -173,7 +173,7 @@ class MAB(Environment):
         else:
             #1
             self.arms.append(HashBernoulli(0.7, 0.75, 1.0, self._binary_rewards))
-            self.arms.append(HashBernoulli(0.7, 0.65, 0.86, self._binary_rewards))
+            self.arms.append(HashBernoulli(0.606, 0.65, 0.86, self._binary_rewards))
             #2
             #self.arms.append(HashBernoulli(0.65, 0.6, 1.0, self._binary_rewards))
             #self.arms.append(HashBernoulli(0.55, 0.5, 0.84, self._binary_rewards))

@@ -84,7 +84,7 @@ else:
 #else:
 policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, 100))
 policies_name.append('PI ucb')
-shrink = 1
+shrink = 10
 policies.append(ORE2(HORIZON, TAU, DELTA, shrink, ROUNDING, 5, BINARY, MOD))
 policies_name.append('PI Low')
 
@@ -168,7 +168,10 @@ if opts.VERBOSE:
             plt_fn(arange(HORIZON), avg_regret_low, color = COLORS[pilow_index], marker = MARKERS[pilow_index], markevery=HORIZON/100, label = '$\displaystyle\pi_{low}$')
 
 
-            plt.legend(loc=2)
+            if SC:
+                plt.legend(loc=2)
+            else:
+                plt.legend(loc=3)
             #plt.xlabel('Rounds')
             #plt.ylabel('Regret')
             plt.tight_layout()
