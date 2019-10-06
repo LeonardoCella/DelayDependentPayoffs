@@ -14,12 +14,13 @@ from adaptiveRank.policies.Ore import ORE2
 from adaptiveRank.policies.One import One
 from adaptiveRank.policies.Alt import Alt
 
+from math import sqrt
 from optparse import OptionParser
 from numpy import mean, std, zeros, arange, where
 from joblib import Parallel, delayed
 import matplotlib
 from matplotlib import rc
-rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'], 'size':'15.0'})
 rc('text', usetex=True)
 import matplotlib.pyplot as plt
 import sys
@@ -82,9 +83,9 @@ else:
 #    policies.append(Alt())
 #    policies_name.append('PI alternating')
 #else:
-policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, 100))
+policies.append(FPO_UCB(HORIZON, TAU, DELTA, ROUNDING, 5, BINARY, MOD, sqrt(2)))
 policies_name.append('PI ucb')
-shrink = 10
+shrink = 1
 policies.append(ORE2(HORIZON, TAU, DELTA, shrink, ROUNDING, 5, BINARY, MOD))
 policies_name.append('PI Low')
 
@@ -168,13 +169,14 @@ if opts.VERBOSE:
             plt_fn(arange(HORIZON), avg_regret_low, color = COLORS[pilow_index], marker = MARKERS[pilow_index], markevery=HORIZON/100, label = '$\displaystyle\pi_{low}$')
 
 
-            if SC:
-                plt.legend(loc=2)
+            if not SWITCHING:
+                plt.legend(loc=2) #upper left
             else:
-                plt.legend(loc=3)
+                plt.legend(loc=3) #lower left
             #plt.xlabel('Rounds')
             #plt.ylabel('Regret')
-            plt.tight_layout()
+            #plt.tight_layout()
+            plt.autoscale(enable = True, axis ='x', tight=True)
             plt.grid()
             ax.set_xscale('log')
 

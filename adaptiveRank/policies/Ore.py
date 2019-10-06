@@ -92,9 +92,9 @@ class ORE2(Policy):
 
             # Output
             if len(self._activeRanks) > 1:
-                c_print(4, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
-                c_print(4, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsRanks))
-                c_print(4, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
+                c_print(1, "ORE.py, CHOICE INIT RANK ELIMINATION {}-ROUND with {} appends per rank".format(self._r, nbAppends))
+                c_print(1, "ORE.py, RANKS MEANS {}, Nb Pulls: {}".format(self._meanRanks, self._nbPullsRanks))
+                c_print(1, "ORE.py, choice: round {}, Active Ranks {}\n".format(self._t, self._activeRanks))
 
             # Playing the less played rank among the active ones
             active_ranks_pulls = [self._nbPullsRanks[i] for i in self._activeRanks]
@@ -103,7 +103,7 @@ class ORE2(Policy):
             self._pulledRankIndex = rank_id
             self._nbPullsRanks[rank_id] += 1
             # List extension: calibration + Ts
-            c_print(4, "\nORE.py, CHOICE pulled rank {}, starting list: {}".format(rank_id, index))
+            c_print(1, "\nORE.py, CHOICE pulled rank {}".format(rank_id))
             tmp_index = list(self._activeArms[:rank_id+1])
             jump_list += [0] * (rank_id+1)
             jump_rank += [rank_id] * (rank_id+1)
@@ -113,7 +113,7 @@ class ORE2(Policy):
                 jump_rank += [rank_id] * (rank_id+1)
                 jump_list += [1] * (rank_id+1)
 
-            c_print(4, "ORE.py, CHOICE rank_id: {} with {} appends, active ranks pulls {}".format(rank_id, nbAppends, active_ranks_pulls))
+            c_print(1, "ORE.py, CHOICE rank_id: {} with {} appends, active ranks pulls {}".format(rank_id, nbAppends, active_ranks_pulls))
 
             # NO RANK ELIMINATION at first round or within a window of active ranks pulls
             if self._t == 0 or min(active_ranks_pulls)!= max(active_ranks_pulls):
@@ -122,7 +122,7 @@ class ORE2(Policy):
                 return index
 
             # Stage 2: Rank Elimination
-            c_print(4, "ORE.py Start Rank Elimination with {} active ranks".format(len(self._activeRanks)))
+            c_print(1, "ORE.py Start Rank Elimination with {} active ranks".format(len(self._activeRanks)))
             self._r = self._r + 1
             if len(self._activeRanks) > 1:
                 self._rankElimination()
@@ -148,7 +148,7 @@ class ORE2(Policy):
             ranks_gap = self._meanRanks[max_rank_id] - self._meanRanks[rank_id]
             # Rank Elimination: eliminating up to 1 rank per round
             if ranks_gap > self._cb():
-                c_print(4,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
+                c_print(1,"\nRANK ELIMINATION(), Eliminating Rank {}, vs {}, cb {}, gap {}, means {}".format(rank_id, max_rank_id, self._cb(), ranks_gap, self._meanRanks))
                 self._s = self._s + 1
                 self._activeRanks.remove(rank_id)
                 if len(self._activeRanks) == 1:

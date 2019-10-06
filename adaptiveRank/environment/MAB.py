@@ -112,10 +112,16 @@ class MAB(Environment):
 
                 # Reward with (possible) cost penalization
                 if self._SC == 1:
-                    result.store(t, c, (1.0*reward) - cost)
+                    if self._binary_rewards:
+                        result.store(t, c, (1.0*reward) - cost)
+                    else:
+                        result.store(t, c, (1.0*expected_reward) - cost)
                     cost = 0.0
                 else:
-                    result.store(t, c, expected_reward)
+                    if self._binary_rewards:
+                        result.store(t, c, reward)
+                    else:
+                        result.store(t, c, expected_reward)
 
                 # Delays update
                 for i in self._armsIndexes:
@@ -146,11 +152,11 @@ class MAB(Environment):
             self._meanArms = []
             seed(seed_init)
             starting_grid = linspace(0.0, 1.0, self.nbBuckets, endpoint = True)
-            c_print(1, "MAB.py arm_creation() Buckets: {}".format(starting_grid))
+            c_print(4, "MAB.py arm_creation() Buckets: {}".format(starting_grid))
             delta = 1.0/(self.nbBuckets) # Previously adopted delta
             new_extreme = delta*(self.fraTop)*self.nbBuckets
             good_arms = linspace(0, new_extreme, self.nbBuckets, endpoint = False)
-            c_print(1, "MAB.py arm_creation() Good arms: {}".format(good_arms))
+            c_print(4, "MAB.py arm_creation() Good arms: {} with extreme point: {}".format(good_arms, new_extreme))
             means = array(snp.merge(starting_grid, good_arms)) # evenly round to 2 decimals 
             means = around(unique(means), 3)
             self._meanArms = 1 - means
@@ -168,7 +174,7 @@ class MAB(Environment):
                 #    delayUB = self._given_delaysUB[i]
                 #    gamma = self._given_gamma
                 tmpArm = Bernoulli(mu, gamma, delayLB, delayUB, self._binary_rewards)
-                c_print(4, "MAB.py, arm_creation(), Created arm: {}".format(tmpArm))
+                c_print(1, "MAB.py, arm_creation(), Created arm: {}".format(tmpArm))
                 self.arms.append(tmpArm)
         else:
             #1
